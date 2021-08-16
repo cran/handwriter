@@ -117,7 +117,7 @@ List findLoopDims(List knownLoops, NumericVector dims){
         NumericVector checkPointXY = convertIndextoXY(pathConsidering[k], dims, 1);
 
       //Does it fall on the line?
-      double distanceFromLine = abs(checkPointXY[1] - ((slopeFromXYToCentroid * checkPointXY[0]) + yIntercept));
+      double distanceFromLine = fabs(checkPointXY[1] - ((slopeFromXYToCentroid * checkPointXY[0]) + yIntercept));
 
       if(distanceFromLine < 2){//only check distance if it is more on the line that a previous one.
           //get distance between two points, if it is bigger than max then update max
@@ -152,7 +152,7 @@ List findLoopDims(List knownLoops, NumericVector dims){
     for(int j = 0; j < pathConsidering.size()/2; j++){
       NumericVector checkPointXY = convertIndextoXY(pathConsidering[j], dims, 1);
       
-      double distanceFromPerpLine = abs(checkPointXY[1] - ((shortestLineSlope * checkPointXY[0]) + yIntercept));
+      double distanceFromPerpLine = fabs(checkPointXY[1] - ((shortestLineSlope * checkPointXY[0]) + yIntercept));
       if(distanceFromPerpLine < closestPerpPoint1Val){
         closestPerpPoint1Val = distanceFromPerpLine;
         closestPerpPoint1 = checkPointXY;
@@ -163,7 +163,7 @@ List findLoopDims(List knownLoops, NumericVector dims){
     for(int k = pathConsidering.size()/2; k < pathConsidering.size(); k++){
       NumericVector checkPointXY = convertIndextoXY(pathConsidering[k], dims, 1);
 
-      double distanceFromPerpLine = abs(checkPointXY[1] - ((shortestLineSlope * checkPointXY[0]) + yIntercept));
+      double distanceFromPerpLine = fabs(checkPointXY[1] - ((shortestLineSlope * checkPointXY[0]) + yIntercept));
       if(distanceFromPerpLine < closestPerpPoint2Val){
         closestPerpPoint2Val = distanceFromPerpLine;
         closestPerpPoint2 = checkPointXY;
@@ -252,7 +252,7 @@ double findDistanceBetweenTwoPoints(NumericVector p1, NumericVector p2){
   
   int y_b = p1[1];
   int y_a = p2[1];
-  double distance = sqrt(pow((x_b-x_a), 2)+pow((y_b-y_a), 2));
+  double distance = sqrt(double((x_b - x_a) * (x_b - x_a)) + double((y_b - y_a) * (y_b - y_a)));
   return distance;
 }
 

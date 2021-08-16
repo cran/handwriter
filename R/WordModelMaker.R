@@ -1,5 +1,4 @@
 library(rjson)
-library(data.table)
 library(randomForest)
 
 #' makeModel

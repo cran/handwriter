@@ -1,15 +1,15 @@
-bac9a9503c2ee7d54e6448adcfcb6e0b *DESCRIPTION
+d54ec044b1e790cd8f870f6f1aabb68e *DESCRIPTION
 0af56626fc4b662221c2e427f3ef4cd3 *NAMESPACE
 2e15fc61880767f20ec84497834000b0 *R/CreateWords.R
 9f0bd91f459b7a8543c1397253ea37c7 *R/ExtractFeatures.R
 16dd8d67f90ade21f6336494a2e92021 *R/ExtractWordInfo.R
 e25ee91d41eb5db938eab1c582807fc8 *R/JunctionDetection.R
-b5e899e757fc1adb71e60c64ffc011c4 *R/PlotFunctions.R
+8c8c51be4eb60cd564cd579e1d992382 *R/PlotFunctions.R
 1910b5410ec5a647eb62c3caf9f8392c *R/RcppExports.R
 b1dcec6d6a2d095c498d416d84787898 *R/RunHandwritingViewer.R
 0cb06a823390ba7d0d0e505dbe22f94e *R/ThinText.R
 c9dd3d5ded14ce259deed02ff59dce0a *R/TriangulationPlotFunctions.R
-cf00a843cc7984d2fd85a0a1714fc41d *R/WordModelMaker.R
+5046134f05047dabef2c4ce7485d6a0f *R/WordModelMaker.R
 4a385d5ba7843df92cb3a74e12ef06aa *R/data.R
 db84fefdad39dabb4f8ddd6fc63caf6b *R/globals.R
 ae1fc574df22e1ea1eb19768d2c2c371 *R/handwriter.R
@@ -74,8 +74,8 @@ bc2bd36f97c8c949a6fe13683a15f291 *man/nature1.Rd
 ec23d14e678887d132d8a2a1a2e4e37e *man/otsuBinarization.Rd
 82ab9d4ee806a9148910943df146769d *man/pathLetterAssociate.Rd
 cc7ee431ea87c1ae00718f720e7d1bfd *man/plotColorNodes.Rd
-5e15bcdf5324a4fd1db2e83bd5c1febe *man/plotImage.Rd
-ad7e8f7f15e1f17e175486a3b150acc5 *man/plotImageThinned.Rd
+5a33c86c0bd5466fa76ac9f4fe6c9a8a *man/plotImage.Rd
+714a5601821fe45cabf34ecef1641732 *man/plotImageThinned.Rd
 64e94a773bbc25753dbc2b6cb74df129 *man/plotLetter.Rd
 cbc833710feb7b59044ac11d6b8e2354 *man/plotLine.Rd
 c5f63b11286ddc9331e2fc0b336013f1 *man/plotNodes.Rd
@@ -98,6 +98,6 @@ b8911c9fac1d7fb7855e2ba09e598379 *man/wordModel.Rd
 e5a75ec60b3a62ae90da65a96519b83a *src/Makevars
 d7d74c72972529b725ccb440f9ec0aed *src/Makevars.win
 a6ab1efe783f874042758a06fb3915ae *src/Masks.h
-65e9aa5312dff2932f8218a595572cba *src/MeasurementsCpp.cpp
+db28a2aefb22763d5e9afa4cac7fb6c3 *src/MeasurementsCpp.cpp
 dad7b7de607e76b3523b59c0d8fb9390 *src/RcppExports.cpp
 2aedce326255aab878ae2707acbb52f7 *src/ThinImageCpp.cpp
