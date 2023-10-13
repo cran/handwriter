@@ -2,16 +2,14 @@
 % Please edit documentation in R/PlotFunctions.R
 \name{plotNodes}
 \alias{plotNodes}
-\title{plotNodes}
+\title{Plot Nodes}
 \usage{
-plotNodes(img, thinned, nodeList, nodeSize = 3, nodeColor = "red")
+plotNodes(doc, plot_break_pts = FALSE, nodeSize = 3, nodeColor = "red")
 }
 \arguments{
-\item{img}{Full image matrix, unthinned.}
+\item{doc}{A document processed with \code{\link[=processHandwriting]{processHandwriting()}}}
 
-\item{thinned}{Thinned image matrix}
-
-\item{nodeList}{Nodelist returned from getNodes.}
+\item{plot_break_pts}{Logical value as to whether to plot nodes or break points. plot_break_pts=FALSE plots nodes and plot_break_pts=TRUE plots break point.}
 
 \item{nodeSize}{Size of triangles printed. 3 by default. Move down to 2 or 1 for small text images.}
 
@@ -25,15 +23,11 @@ This function returns a plot with the full image plotted in light gray and the s
 Also called from plotPath, which is a more useful function, in general.
 }
 \examples{
-\dontrun{
-twoSent_document = list()
-twoSent_document$image = twoSent
-twoSent_document$thin = thinImage(twoSent_document$image)
-twoSent_processList = processHandwriting(twoSent_document$thin, dim(twoSent_document$image))
+csafe_document <- list()
+csafe_document$image <- csafe
+csafe_document$thin <- thinImage(csafe_document$image)
+csafe_document$process <- processHandwriting(csafe_document$thin, dim(csafe_document$image))
+plotNodes(csafe_document)
+plotNodes(csafe_document, nodeSize=6, nodeColor="black")
 
-twoSent_document$nodes = twoSent_processList$nodes
-twoSent_document$breaks = twoSent_processList$breakPoints
-plotNodes(twoSent_document$image, twoSent_document$thin, twoSent_document$nodes)
-plotNodes(twoSent_document$image, twoSent_document$thin, twoSent_document$breaks)
-}
 }

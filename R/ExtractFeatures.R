@@ -1,3 +1,23 @@
+# The handwriter R package performs writership analysis of handwritten documents. 
+# Copyright (C) 2021 Iowa State University of Science and Technology on behalf of its Center for Statistics and Applications in Forensic Evidence
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+# Internal Functions ------------------------------------------------------
+
+
 #' extract_character_features
 #'
 #' Primary driver of feature extraction. Parses all characters from a processed image.
@@ -7,7 +27,7 @@
 #' @param dims Dimensions of binary image
 #' @return nested lists associating features to respective characters.
 #' 
-#' @keywords centroid skew slant lean character
+#' @noRd
 extract_character_features = function(img, character_lists,dims){
   
   character_features = list()
@@ -35,7 +55,7 @@ extract_character_features = function(img, character_lists,dims){
 #' @param uniqueid Unique numerical reference to character
 #' @return List containing features of character
 #' 
-#' @keywords character features
+#' @noRd
 char_to_feature = function(character, dims, uniqueid){
   aspect_info = get_aspect_info(character$path,dims)
   centroid_info = get_centroid_info(character$path,dims)
@@ -52,17 +72,17 @@ char_to_feature = function(character, dims, uniqueid){
 #'
 #' Internal function for drawing a line from two given nodes.
 #'  
-#' @param img full image matrix; used to call plotImageThinned()
-#' @param thinned thinned image matrix; used to call plotImageThinned()
-#' @param nodeList list of nodes
+#' @param doc A document processed with [handwriter::processHandwriter()]
 #' @param nodeSize size of node; default set to 3
 #' @param nodeColor color of node; default set to red
 #' @return a line in between the two nodes
-plotNodesLine = function(img, thinned, nodeList, nodeSize = 3, nodeColor = "red")
+#' 
+#' @noRd
+plotNodesLine = function(doc, nodeSize = 3, nodeColor = "red")
 {
   X <- Y <- NULL
-  p = plotImageThinned(img, thinned)
-  pointSet = data.frame(X = ((nodeList - 1) %/% dim(img)[1]) + 1, Y = dim(img)[1] - ((nodeList - 1) %% dim(img)[1]))
+  p = plotImageThinned(doc)
+  pointSet = data.frame(X = ((doc$process$nodes - 1) %/% dim(doc$image)[1]) + 1, Y = dim(doc$image)[1] - ((doc$process$nodes - 1) %% dim(doc$image)[1]))
   sx = pointSet[[1]][[1]]
   sy = pointSet[[2]][[1]]
   ex = pointSet[[1]][[2]]
@@ -72,73 +92,17 @@ plotNodesLine = function(img, thinned, nodeList, nodeSize = 3, nodeColor = "red"
   return(p)
 }
 
-plotNodesLine1 = function(img, thinned, nodeList, nodeSize = 3, nodeColor = "red")
+plotNodesLine1 = function(doc, nodeSize = 3, nodeColor = "red")
 {
   X <- Y <- NULL
-  p = plotImageThinned(img, thinned)
-  pointSet = data.frame(X = ((nodeList - 1) %/% dim(img)[1]) + 1, Y = dim(img)[1] - ((nodeList - 1) %% dim(img)[1]))
+  p = plotImageThinned(doc)
+  pointSet = data.frame(X = ((doc$process$nodes - 1) %/% dim(doc$image)[1]) + 1, Y = dim(doc$image)[1] - ((doc$process$nodes - 1) %% dim(doc$image)[1]))
   sx = pointSet[[1]][[1]]
   sy = pointSet[[2]][[1]]
   ex = pointSet[[1]][[2]]
   ey = pointSet[[2]][[2]]
   p = p + geom_point(data = pointSet, aes(X, Y), size = nodeSize, shape = I(16), color = I(nodeColor), alpha = I(.4)) + geom_curve(x = sx, y = sy, xend = ex, yend = ey, curvature = 0, angle = 180)
   return(p)
-}
-
-#' i_to_rc
-#'
-#' Function for converting indices to respective row, col.
-#' 
-#' @param nodes nodes to be converted.
-#' @param dims dimensions of binary image
-#' @return returns matrix mapping nodes to respective row, 
-#'  
-#' @keywords row column binary image
-i_to_rc = function(nodes, dims)
-{
-  cs = (nodes-1)%/%dims[1] + 1
-  rs = (nodes-1)%%dims[1] + 1
-  return(matrix(c(rs,cs), ncol = 2))
-}
-
-#' i_to_rci
-#'
-#' Function for converting indices to respective row, col and associates the original index.
-#' 
-#' @param nodes nodes to be converted.
-#' @param dims dimensions of binary image
-#' @param fixed instead of normal computation of rows, put it in a fixed location.
-#' @return returns matrix mapping nodes' indices to respective row, col
-#' 
-#' @keywords row column binary image index
-i_to_rci = function(nodes, dims, fixed = FALSE)
-{
-  cs = (nodes-1)%/%dims[1] + 1
-  rs = (nodes-1)%%dims[1] + 1
-  if(fixed) rs = dims[1] - rs + 1
-  rowcolmatrix = cbind(rs,cs,nodes)
-  colnames(rowcolmatrix) = c('y','x','index')
-  return(rowcolmatrix)
-}
-
-#' rc_to_i
-#'
-#' Convert rows and columns to their respective indices.
-#' This is index sensitive, so row_y[[1]] should correspond to col_x[[1]]
-#' 
-#' @param row_y Row(s) to be converted to an index
-#' @param col_x Columns(s) to be converted to an index
-#' @param dims Dimensions of binary image
-#' @param fixed Logical value asking if row_y is fixed to a point.
-#' @return Returns index(icies) of all row_y's and col_x's
-#' 
-#' @keywords row column binary image index
-rc_to_i = function(row_y,col_x,dims, fixed = FALSE)
-{
-  row_y = as.integer(row_y)
-  if(fixed) row_y = dims[1] - row_y + 1
-  col_x = as.integer(col_x)
-  return((col_x-1)*dims[1]+row_y)
 }
 
 #' get_aspect_info
@@ -153,7 +117,7 @@ rc_to_i = function(row_y,col_x,dims, fixed = FALSE)
 #' @param dims Dimensions of binary image
 #' @return List containing aspect_ratio, 
 #' 
-#' @keywords aspect ratio character
+#' @noRd
 get_aspect_info = function(character, dims)
 {
   rowcol = i_to_rci(character,dims)
@@ -182,7 +146,7 @@ get_aspect_info = function(character, dims)
 #' @param dims Dimensions of binary image
 #' @return List containing centroid, pixel density,letter 'lean', and all supporting information
 #' 
-#' @keywords centroid skew slant lean character
+#' @noRd
 get_centroid_info = function(character, dims)
 {
   rowcol = i_to_rci(character,dims)
@@ -231,7 +195,7 @@ get_centroid_info = function(character, dims)
 #' @param dims Dimensions of binary image
 #' @return nested lists associating features to respective characters.
 #' 
-#' @keywords centroid skew slant lean character
+#' @noRd
 add_covariance_matrix = function(character_lists, character_features, dims){
   for(i in 1:length(character_lists)){
     matrix = i_to_rc(character_lists[[i]]$path, dims)
@@ -260,7 +224,7 @@ add_covariance_matrix = function(character_lists, character_features, dims){
 #' @param dims Dimensions of binary image
 #' @return Appends line information to character features
 #' 
-#' @keywords character features line number
+#' @noRd
 add_line_info = function(character_features,dims){
   line_info = line_number_extract(all_down_dists(character_features), all_centroids(character_features), dims)
   line_order = lapply(line_info, sort)
@@ -310,177 +274,6 @@ add_updown_neighboring_char_dist = function(character_features, character_lists,
   return(character_features)
 }
 
-#' wordModel is the RandomForest model to decide if a word separation has happened
-#' 
-#'
-#' @name wordModel
-#' @docType data
-#' @keywords data
-NULL
-
-#' add_word_info
-#'
-#' Associates characters to their respective word numbers by ML on labeled data
-#' 
-#' @param letterList List containing characters
-#' @param dims Dimensions of binary image
-#' @return Appends line information to character features
-#' 
-#' @keywords character features line number
-#'
-#' @importFrom stats predict
-add_word_info = function(letterList, dims){
-  
-  #Compute the approximate width and height of each line
-  dimsList <- list()
-  currentLine = 1
-  
-  left_most = Inf
-  right_most = 0
-  tallest = 0
-  for (i in 1:length(letterList)){
-    if(letterList[[i]]$characterFeatures$leftmost_col < left_most){
-      left_most = letterList[[i]]$characterFeatures$leftmost_col
-    }
-    
-    if(letterList[[i]]$characterFeatures$rightmost_col > right_most){
-      right_most = letterList[[i]]$characterFeatures$rightmost_col
-    }
-    
-    if(letterList[[i]]$characterFeatures$height > tallest){
-      tallest = letterList[[i]]$characterFeatures$height
-    }
-    
-    if(letterList[[i]]$characterFeatures$line_number != currentLine | i == length(letterList)) {
-      
-      dimsList[[currentLine]] <- list(right_most-left_most, tallest)
-      
-      currentLine = currentLine + 1
-      left_most = Inf
-      right_most = 0
-      tallest = 0
-    }
-  }
-  
-  #Create a new DF and fill it up from each character entry
-  dataDF <- data.frame(line=numeric(0),line_height=numeric(0),line_width=numeric(0),height=numeric(0),width=numeric(0),x=numeric(0),label=character(0),stringsAsFactors = FALSE)
-  for (i in 1:length(letterList)){
-    line = letterList[[i]]$characterFeatures$line_number
-    dataDF[nrow(dataDF) + 1,] =
-          list(line,
-          dimsList[[line]][[2]], dimsList[[line]][[1]],
-          letterList[[i]]$characterFeatures$height, letterList[[i]]$characterFeatures$width,
-          letterList[[i]]$characterFeatures$leftmost_col)
-  }
-  
-  #Add in proportional info
-  for(r in 1:nrow(dataDF)){
-    row = dataDF[r,]
-    prev_row = dataDF[r-1,]
-    next_row = dataDF[r+1,]
-    
-    dataDF[r, 'height_prop'] = row$height/row$line_height
-    dataDF[r, 'width_prop'] = row$width/row$line_width
-    
-    to_right = next_row$x - (row$x + row$width)
-    dataDF[r, 'to_right_prop'] = to_right/row$line_width
-    
-    if(r==1){next}
-    to_left = row$x - (prev_row$x + prev_row$width)
-    dataDF[r, 'to_left_prop'] = to_left/row$line_width
-  } 
-  
-  #just take the proportional data since that is what our model is based off of
-  testDF = dataDF[c("height_prop", "width_prop", "to_right_prop", "to_left_prop")]
-  
-  # Make prediction and add to other
-  loadNamespace("randomForest")
-  wordPredictions <- cbind(testDF, predict(wordModel, testDF, type = "class"))
-  names(wordPredictions)[names(wordPredictions) == "predict(wordModel, testDF, type = \"class\")"] <- "prediction"
-  wordPredictions[1, 'prediction']="beginning"
-  wordPredictions[nrow(wordPredictions), 'prediction']="ending"
-  
-  #Now use the predictions to figure out the word boundaries
-  wordCount = 1
-  lineCount = 1
-  holding = NULL
-  prediction = NA
-  for(i in 1:length(letterList)){
-    letterList[[i]]$characterFeatures = c(letterList[[i]]$characterFeatures, list(wordIndex = wordCount))
-    holding = prediction
-    prediction = wordPredictions[i, 'prediction']
-    
-    #If we are on the last letter don't do any of this (out of bounds)
-    if(i == length(letterList)){break}
-    
-    #keep track of next prediction
-    nextPrediction = wordPredictions[i+1, 'prediction']
-    
-    #if next char is on a new line, index the word and go to next iteration
-    if(letterList[[i+1]]$characterFeatures$line_number > letterList[[i]]$characterFeatures$line_number){
-      wordCount = wordCount + 1
-      next
-    }
-    
-    #if we see an end and the next is NOT an end, move on
-    if(prediction == "ending" & nextPrediction != "ending"){
-      wordCount = wordCount + 1
-      next
-    }
-  }
-  
-  return(letterList)
-}
-
-# #' add_word_info_old
-# #' THIS IS THE OLD VERSION ---- CURRENT VERSION ABOVE
-# #' Associates characters to their respective word numbers by distance between right edge of char and left edge of next
-# #' Needs improvement if runtime becomes a problem
-# #' @param character_features All extracted features
-# #' @param dims Dimensions of binary image
-# #' @keywords character, features, line number
-# #' @return Appends line information to character features
-
-# add_word_info_old = function(letterList, dims){#character_features){
-#   
-#   #loop that goes through and records distances between rightmost_col and leftmost_col of next
-#   dist_between_list = list()
-#   right_col = letterList[[1]]$characterFeatures$rightmost_col
-#   for(i in 2:length(letterList)){
-#     left_col = letterList[[i]]$characterFeatures$leftmost_col
-#     dist_between = left_col - right_col
-#     dist_between_list <- append(dist_between_list, dist_between)
-#     right_col = letterList[[i]]$characterFeatures$rightmost_col                                                                                                                                                                                                                                                                                                                                                                                                                                                            
-#   }    
-#   dist_between_vec <- unlist(dist_between_list)
-#   new_line_threshold = -(dims[2]/2)
-#   
-#   
-#   #find the average of these measurements - here a few ideas on how to calcualte it
-#   dist_between_vec <- append(dist_between_vec, c(0))
-#   
-#   #1: ZERO OUT, TAKE MEAN * 1.5
-#   dist_vec_zeroed <- dist_between_vec #save off a zeroed one to find our threshold, keep the real one for processing
-#   dist_vec_zeroed[dist_vec_zeroed < 0] <- 0
-#   dist_between_mean = mean(dist_vec_zeroed)
-#   splitThreshold = dist_between_mean * 1.5
-#   
-#   #split up the words according to this measurement
-#  wordCount = 1
-#   for(i in 1:(length(letterList))){
-#     letterList[[i]]$characterFeatures = c(letterList[[i]]$characterFeatures, list(wordIndex = wordCount))
-#    
-#     if(dist_between_vec[[i]] < new_line_threshold){ #CONSULT THE MODEL HERE
-#       wordCount = wordCount + 1
-#     }
-#     
-#     if(dist_between_vec[[i]] >= splitThreshold){
-#       wordCount = wordCount + 1
-#     }
-#   }
-#   
-#   return(letterList)
-# }
 
 #' get_loop_info
 #'
@@ -494,7 +287,7 @@ add_word_info = function(letterList, dims){
 #' @param dims Dimensions of binary image
 #' @return Loop information to respective character
 #' 
-#' @keywords character loop associate
+#' @noRd
 get_loop_info = function(character,dims){
   
   #loops = loop_extract(character$allPaths)
@@ -552,9 +345,10 @@ character_features_by_line = function(character_features){
 #' Picks out loops for later character association.
 #' 
 #' @param allPaths All character (formerly letter) paths from processHandwriting()
-#' @keywords character loops line
 #' 
 #' @return List of all loops 
+#' 
+#' @noRd
 loop_extract = function(allPaths){
   loops = list()
   for(i in 1:length(allPaths)){
@@ -576,7 +370,7 @@ loop_extract = function(allPaths){
 #' @param character_features Features extracted from any given document
 #' @return All centroids concatenated with one another (unlisted)
 #' 
-#' @keywords character loops line
+#' @noRd
 all_centroids = function(character_features){
   centroids = list()
   for(i in 1:length(character_features)){
@@ -593,7 +387,7 @@ all_centroids = function(character_features){
 #' @param character_features Features extracted from any given document
 #' @return All downdistance concatenated with one another (unlisted)
 #' 
-#' @keywords character neighbor line
+#' @noRd
 all_down_dists = function(character_features){
   down_dists = list()
   for(i in 1:length(character_features)){
@@ -611,10 +405,10 @@ all_down_dists = function(character_features){
 #' @param dims Dimensions of binary image
 #' @return List associating line numbers to characters
 #' 
-#' @keywords character features line number
-#' 
 #' @importFrom stats median
 #' @importFrom utils head
+#' 
+#' @noRd
 line_number_extract = function(down_dists, all_centroids, dims){
   centroid_rci = matrix(i_to_rci(all_centroids,dims), ncol = 3)
   #sorting list based on y
@@ -663,85 +457,3 @@ line_number_extract = function(down_dists, all_centroids, dims){
   }
   return(lines)
 }
-
-#####################################################################
-###---### CURRENTLY UNUSED FUNCTIONS -- FUTURE USE UNKNOWN ####---###
-#####################################################################
-# 
-# loop_info = function(loop_list, dims){
-#   major = loop_major(loop_list, dims)
-#   slope = find_i_slope(major$major_p1,major$major_p2,dims)
-#   print(slope)
-#   minor = loop_minor(loop_list,slope,dims)
-#   return(list(major = major,minor = minor))
-# }
-# loop_major = function(loop_list,dims){
-#   rowcol = i_to_rci(loop_list,dims)
-#   rows_y = rowcol[,'y'] 
-#   cols_x = rowcol[,'x']
-#   major_dist = -Inf
-#   y1 = rowcol[[1]]
-#   x1 = rowcol[[1]]
-#   furthest_index = NULL
-#   for(i in 1:length(loop_list)){
-#     cur_dist = sqrt((cols_x[[i]]-x1)^2+(rows_y[[i]]-y1)^2)
-#     if(cur_dist > major_dist ){
-#       major_dist = cur_dist
-#       furthest_index = loop_list[[i]]
-#     }
-#   }
-#   return(list(major_p1 = loop_list[[1]], major_p2 = furthest_index, major_dist = major_dist))
-# }
-# vector_to_mid = function(targ)
-# 
-# loop_minor = function(loop_list, slope, dims){
-#     i1 = NULL
-#     i2 = NULL
-#     neg_recip = -1/(slope)
-#     cat("neg recip: ",neg_recip,"\n")
-#     min_dif = Inf
-#     for(i in 1:length(loop_list)/2){
-#       for(j in length(loop_list)/2:1){
-#         if(i == j) next 
-#         else {
-#           new_slope = find_i_slope(loop_list[[i]],loop_list[[j]],dims)
-#           slope_dif = abs(new_slope-neg_recip)
-#           if(!is.nan(new_slope) & new_slope< -.8 & new_slope > -1){
-#           }
-#         }
-#         if(!is.nan(slope_dif) & slope_dif < min_dif){
-#           cat(loop_list[[i]],loop_list[[j]],"new slope: ",new_slope, "\n")
-#           i1 = loop_list[[i]]
-#           i2 = loop_list[[j]]
-#           min_dif = slope_dif
-#         }
-#       }
-#     }
-#     return(list(minor_p1 = i1, minor_p2 = i2))
-#   }
-# 
-# find_i_slope = function(starti, endi, dims, dbug = FALSE)
-# {
-#   rci = i_to_rci(c(starti,endi),dims)
-#   #print(rci)
-#   #standard for actual coordinate eq's
-#   rows_y = dims[[1]] - rci[,'y'] + 1
-#   cols_x = rci[,'x']
-#   x1 = cols_x[[1]]
-#   y1 = rows_y[[1]]
-#   x2 = cols_x[[2]]
-#   y2 = rows_y[[2]]
-#   if(dbug){
-#     cat("x1: ",x1[[1]]," y1: ", y1[[1]] ,"\n")
-#     cat("x2: ",x2[[1]]," y2: ", y2[[1]], "\n")
-#   }
-#   slope = (y2-y1)/(x2-x1)
-#   return(slope)
-# }
-# 
-# #driver for minor axis, rq'd feature by amy
-# perp_bisector = function(x1,x2,y1,y2,slope,dims,dbug = FALSE){
-#   midx = (x1+x2)/2
-#   midy = (y1+y2)/2
-#   neg_recip = -1/(slope)
-# }

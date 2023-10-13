@@ -14,13 +14,17 @@ twoSent
 Two sentence printed example handwriting
 }
 \examples{
+twoSent_document <- list()
+twoSent_document$image <- twoSent
+plotImage(twoSent_document)
+
 \dontrun{
-twoSent_document = list()
-twoSent_document$image = twoSent
-plotImage(twoSent_document$image)
-twoSent_document$thin = thinImage(twoSent_document$image)
-plotImageThinned(twoSent_document$image, twoSent_document$thin)
-twoSent_processList = processHandwriting(twoSent_document$thin, dim(twoSent_document$image))
+twoSent_document <- list()
+twoSent_document$image <- twoSent
+plotImage(twoSent_document)
+twoSent_document$thin <- thinImage(twoSent_document$image)
+plotImageThinned(twoSent_document)
+twoSent_processList <- processHandwriting(twoSent_document$thin, dim(twoSent_document$image))
 }
 }
 \keyword{datasets}

@@ -2,23 +2,27 @@
 % Please edit documentation in R/PlotFunctions.R
 \name{plotImage}
 \alias{plotImage}
-\title{plotImage}
+\title{Plot Image}
 \usage{
-plotImage(x)
+plotImage(doc)
 }
 \arguments{
-\item{x}{Binary matrix, usually from readPNGBinary}
+\item{doc}{A document processed with \code{\link[=processDocument]{processDocument()}} or a binary matrix (all entries are 0 or 1)}
 }
 \value{
-Returns plot of x.
+ggplot plot
 }
 \description{
-This function plots a basic binary image.
+This function plots a basic black and white image.
 }
 \examples{
-csafe_document = list()
-csafe_document$image = csafe
-plotImage(csafe_document$image)
+csafe_document <- list()
+csafe_document$image <- csafe
+plotImage(csafe_document)
+
+\dontrun{
+document <- processDocument('path/to/image.png')
+plotImage(document)
+}
 
 }
-\keyword{plot}

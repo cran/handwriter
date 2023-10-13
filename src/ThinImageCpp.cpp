@@ -110,8 +110,7 @@ void countBNeighbors_7or8(const arma::mat &img, uvec white, uvec &toBlack)
   for(int i = 0; i < white.n_elem; i++)
   {
     cell = white[i];
-    neighborInd << img[cell - 1] << img[cell + n - 1] << img[cell + n] << img[cell + n + 1] << img[cell + 1] 
-                << img[cell - n + 1] << img[cell - n] << img[cell - n - 1];
+    neighborInd = { img[cell - 1], img[cell + n - 1], img[cell + n], img[cell + n + 1], img[cell + 1], img[cell - n + 1], img[cell - n], img[cell - n - 1] };
     isBlack = find(neighborInd == 0);
     numBlack = isBlack.n_elem;
     if(numBlack >= 7)
@@ -217,7 +216,7 @@ void count468(const arma::mat &img, uvec checkList, vec &toWhite)
   for(int i = 0; i < checkList.n_elem; i++)
   {
     cell = checkList[i];
-    neighborInd << img[cell + n] << img[cell + 1] << img[cell - n];
+    neighborInd = { img[cell + n], img[cell + 1], img[cell - n] };
     if(any(neighborInd == 1))
       toWhite[i] = 1;
   }
@@ -230,7 +229,7 @@ void count248(const arma::mat &img, uvec checkList, vec &toWhite)
   for(int i = 0; i < checkList.n_elem; i++)
   {
     cell = checkList[i];
-    neighborInd << img[cell - 1] << img[cell + n] << img[cell - n];
+    neighborInd = { img[cell - 1], img[cell + n], img[cell - n] };
     if(any(neighborInd == 1))
       toWhite[i] = 1;
   }
@@ -243,7 +242,7 @@ void count268(const arma::mat &img, uvec checkList, vec &toWhite)
   for(int i = 0; i < checkList.n_elem; i++)
   {
     cell = checkList[i];
-    neighborInd << img[cell - 1] << img[cell + 1] << img[cell - n];
+    neighborInd = { img[cell - 1], img[cell + 1], img[cell - n] };
     if(any(neighborInd == 1))
       toWhite[i] = 1;
   }
@@ -258,8 +257,7 @@ void countBNeighbors(const arma::mat &img, uvec checkList, vec &toWhite)
   for(int i = 0; i < checkList.n_elem; i++)
   {
     cell = checkList[i];
-    neighborInd << img[cell - 1] << img[cell + n - 1] << img[cell + n] << img[cell + n + 1] << img[cell + 1] 
-                << img[cell - n + 1] << img[cell - n] << img[cell - n - 1];
+    neighborInd = { img[cell - 1], img[cell + n - 1], img[cell + n], img[cell + n + 1], img[cell + 1], img[cell - n + 1], img[cell - n], img[cell - n - 1] };
     isBlack = find(neighborInd == 0);
     numBlack = isBlack.n_elem;
     if(numBlack <= 6 && numBlack >= 2)
@@ -277,8 +275,16 @@ void countWBTransitions(const arma::mat &img, uvec checkList, vec &toWhite)
   for(int i = 0; i < checkList.n_elem; i++)
   {
     cell = checkList[i];
-    neighborInd << cell - 1 << cell + n - 1 << cell + n << cell + n + 1 << cell + 1 
-                << cell - n + 1 << cell - n << cell - n - 1 << cell - 1;
+    neighborInd.at(0) = cell - 1;
+    neighborInd.at(1) = cell + n - 1;
+    neighborInd.at(2) = cell + n;
+    neighborInd.at(3) = cell + n + 1;
+    neighborInd.at(4) = cell + 1;
+    neighborInd.at(5) = cell - n + 1;
+    neighborInd.at(6) = cell - n;
+    neighborInd.at(7) = cell - n - 1;
+    neighborInd.at(8) = cell - 1;
+    // neighborInd = { cell - 1, cell + n - 1, cell + n, cell + n + 1, cell + 1, cell - n + 1, cell - n, cell - n - 1, cell - 1 };
     counter = 0;
     for(int j = 0; j < 8; j++)
     {
@@ -301,7 +307,7 @@ void countWBTransitions(const arma::mat &img, uvec checkList, vec &toWhite)
 #message = list()
 #message$image = crop(img)
 #message$thin = thinImage(message$image)
-#plotImageThinned(message$image, message$thin)
+#plotImageThinned(message)
 
 #test = png::readPNG("/Users/Nick/Documents/Projects/CSAFE/Handwriting/data/Writing_csafe_all.png")
 #dim(test)
