@@ -1,3 +1,7 @@
+# handwriter 2.0.3
+
+* Fix initializer warning with arma::vec. Apparently different versions of gcc were raising warnings with the assignment of values in neighbors. The recommended fix was to use an initializer list.
+
 # handwriter 2.0.2
 
 ## New features

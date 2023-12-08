@@ -469,9 +469,10 @@ names that contains the writer ID and a document name.</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">fit_model</span>(<span class="at">template_dir =</span> <span class="st">&quot;path/to/main_dir&quot;</span>, </span>
 <span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>                   <span class="at">model_images_dir =</span> <span class="st">&quot;path/to/main_dir/data/model_docs&quot;</span>,</span>
 <span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>                   <span class="at">num_iters =</span> <span class="dv">4000</span>, </span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>                   <span class="at">num_chains =</span> <span class="dv">1</span>, </span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>                   <span class="at">writer_indices =</span> <span class="fu">c</span>(<span class="dv">7</span>, <span class="dv">10</span>), </span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>                   <span class="at">doc_indices =</span> <span class="fu">c</span>(<span class="dv">11</span>, <span class="dv">14</span>))</span></code></pre></div>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>                   <span class="at">num_chains =</span> <span class="dv">1</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>                   <span class="at">num_cores =</span> <span class="dv">2</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>                   <span class="at">writer_indices =</span> <span class="fu">c</span>(<span class="dv">7</span>, <span class="dv">10</span>), </span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>                   <span class="at">doc_indices =</span> <span class="fu">c</span>(<span class="dv">11</span>, <span class="dv">14</span>))</span></code></pre></div>
 <p>For this tutorial, we will use the small example model,
 <code>example_model_1chain</code>, included in handwriter. This model
 was trained from three documents each from writers 9, 30, 203, 238, and

@@ -1,7 +1,7 @@
-f84f123d950062407a2d2c32d76b4371 *DESCRIPTION
+5154ba1c0874942b87373d0249448f82 *DESCRIPTION
 8b2d92a96f63ecc7fc9c0ea37e933d58 *NAMESPACE
-ad1deffd142aac4e7f9d3268e9444908 *NEWS.md
-aae308ed92cb8dac6bc90bc37b59f1d6 *R/BatchProcessing.R
+ab90ae757531e33b5ef755bbce4aab7e *NEWS.md
+693832d58b9c3787f253ac586efab9aa *R/BatchProcessing.R
 f87bf15b416d5f6b70b48e68177c6d68 *R/ClusterDistanceFunctions.R
 19db65b1b0d2a508e77d0de194ca322a *R/ClusterMakeTemplates.R
 20f01d1f5b0a708279fc34c379362e5e *R/ClusterModeling_analysisfunctions.R
@@ -18,7 +18,7 @@ b0fa9884a8b775e48e749c5f6538e10e *R/PlotFunctions.R
 45c7e0b7b1aa4334f0dc3db9780d2933 *R/data.R
 033d8bcd939ca951afd6649746026940 *R/extractGraphs.R
 c97e722e7d756ae53855bc2223a90d7d *R/handwriter-package.R
-5383b7c1a951e2986c39178d74fd43e5 *README.md
+ed2078b94b64aee5e6481472eff576da *README.md
 e58fc8bd8c5fe81fbd79fd19edc02b0a *build/vignette.rds
 d2bc2de5824cf770bafee8779f899291 *data/csafe.rda
 633d921be9679f46a3425df67ada0b89 *data/example_analysis_1chain.rda
@@ -31,9 +31,9 @@ e222c8ebce5e8507d84446b18e9470fd *data/london.rda
 d6c3e42277fad56538a20ba3f75f903a *data/model_wrapped_cauchy.rda
 4aa7ab510855108b292d9f71e266efcf *data/nature1.rda
 41def7995c5e593325269399f1e4071c *data/twoSent.rda
-00d2c8741522ecca3943c27dcc7cc1ef *inst/doc/handwriter.R
-124caabb8b4e5d82119fdfbb85f846da *inst/doc/handwriter.Rmd
-35559d6e808724807f91ecac031400ea *inst/doc/handwriter.html
+f9caeeac0eced9c1f77f611a4c8b4ea3 *inst/doc/handwriter.R
+e71d3a391075132d0cefd893554692be *inst/doc/handwriter.Rmd
+a11d49c8d1884d2b13468300b14a275f *inst/doc/handwriter.html
 e86175e76ebf2407af64dde931a82793 *inst/extdata/phrase_example.png
 241caf7712af68ad172802f3a8b10036 *inst/python/README.md
 5cea7ab60accf4ccb4baae1f7bd6033d *inst/python/images/w0001_s03_pPHR_r01.png
@@ -87,8 +87,8 @@ af554aff954f5221ecf2d0336ad7cadb *man/plot_posterior_probabilities.Rd
 48b1c35faf0c44458f7bdf86d5edd68f *man/plot_trace.Rd
 2cd573bb951427100feebc560a5bd73c *man/processDocument.Rd
 eae1ff7b2d690104f3154c6b7fd50121 *man/processHandwriting.Rd
-bcabcabf428bd397084deb7eaa2cef6c *man/process_batch_dir.Rd
-071ad044d306c25f71d7d41a4f5df694 *man/process_batch_list.Rd
+070abbee811ef71d1d70781aa2fbfd0c *man/process_batch_dir.Rd
+a43e013028bb8020d899a48634e97427 *man/process_batch_list.Rd
 ef98e54afd3205a6683c5e13e7024808 *man/readPNGBinary.Rd
 43a484ec222f0dec658c0bac7cb3cd89 *man/read_and_process.Rd
 812e37a948eee8d9c361a3beb8f5eabb *man/rgb2grayscale.Rd
@@ -102,7 +102,7 @@ b54164fe12d3133779ae7f4a37eedd37 *src/Makevars.win
 a6ab1efe783f874042758a06fb3915ae *src/Masks.h
 db28a2aefb22763d5e9afa4cac7fb6c3 *src/MeasurementsCpp.cpp
 dad7b7de607e76b3523b59c0d8fb9390 *src/RcppExports.cpp
-dd11a1c5d9d3354cf7e377b8cfe44d92 *src/ThinImageCpp.cpp
+3dd46e355a43b40abb7ea5a9123b547c *src/ThinImageCpp.cpp
 e60f83e0ed23261bb2a9a57f23c6bafe *tests/testthat.R
 8f0f0ea27591eea8c8a35a67ad637a9b *tests/testthat/fixtures/processHandwriting/graphs/sample1_proclist.rds
 2d7aff16b623be266d10230cf9734866 *tests/testthat/fixtures/processHandwriting/graphs/sample2_proclist.rds
@@ -121,4 +121,4 @@ fccf01a2f24168e0e2a09aa591ceda55 *tests/testthat/fixtures/processHandwriting/mak
 0cfc35a110187acbbae477923ff57517 *tests/testthat/test-processHandwriting.R
 26a73fd38aeed74356ab888972a35971 *tests/testthat/test_ClusterDistanceFunctions.R
 a7bc270ca21d6d4f469f57f6eb262f30 *tests/testthat/test_ThinText.R
-124caabb8b4e5d82119fdfbb85f846da *vignettes/handwriter.Rmd
+e71d3a391075132d0cefd893554692be *vignettes/handwriter.Rmd

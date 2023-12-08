@@ -1,6 +1,6 @@
 Package: handwriter
 Title: Handwriting Analysis in R
-Version: 2.0.2
+Version: 2.0.3
 Authors@R: c(person("Iowa State University of Science and Technology on behalf of its Center for Statistics and Applications in Forensic Evidence", role = c("aut", "cph", "fnd")),
           person("Nick", "Berry", role = "aut"),
           person("Stephanie", "Reinders", role = c("aut", "cre"), email = "srein@iastate.edu"),
@@ -25,7 +25,7 @@ VignetteBuilder: knitr
 URL: https://github.com/CSAFE-ISU/handwriter
 BugReports: https://github.com/CSAFE-ISU/handwriter/issues
 NeedsCompilation: yes
-Packaged: 2023-10-13 00:26:04 UTC; stephanie
+Packaged: 2023-12-08 18:46:36 UTC; stephanie
 Author: Iowa State University of Science and Technology on behalf of its Center
     for Statistics and Applications in Forensic Evidence [aut, cph,
     fnd],
@@ -35,4 +35,4 @@ Author: Iowa State University of Science and Technology on behalf of its Center
   Felix Baez-Santiago [ctb],
   Jon González [ctb]
 Repository: CRAN
-Date/Publication: 2023-10-13 14:00:02 UTC
+Date/Publication: 2023-12-08 20:20:02 UTC
