@@ -93,8 +93,7 @@ make_clustering_templates <- function(template_dir,
   message("Processing template training documents...")
   process_batch_dir(
     input_dir = template_images_dir,
-    output_dir = file.path(template_dir, "data", "template_graphs"),
-    return_result = FALSE
+    output_dir = file.path(template_dir, "data", "template_graphs")
   )
 
   # Make proclist ----
@@ -440,11 +439,6 @@ do_setup <- function(template_dir) {
 
   # Create subfolder in template_dir if it doesn't already exist
   make_dir(file.path(template_dir, "data"))
-  make_dir(file.path(template_dir, "logs"))
-
-  # Start log file
-  futile.logger::flog.appender(futile.logger::appender.file(file.path(template_dir, "logs", "log.txt")))
-  message("Creating new clustering template...")
 }
 
 

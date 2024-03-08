@@ -101,8 +101,7 @@ fit_model <- function(template_dir,
   message("Processing model documents...")
   process_batch_dir(
     input_dir = model_images_dir,
-    output_dir = file.path(template_dir, "data", "model_graphs"),
-    return_result = FALSE
+    output_dir = file.path(template_dir, "data", "model_graphs")
   )
 
   # get cluster assignments
@@ -206,9 +205,6 @@ fit_model <- function(template_dir,
 #' model <- drop_burnin(model = example_model_1chain, burn_in = 25)
 #' plot_trace(variable = "mu[1,2]", model = example_model_1chain)
 #'
-#' model <- drop_burnin(model = example_model_2chains, burn_in = 25)
-#' plot_trace(variable = "mu[1,2]", model = example_model_2chains)
-#'
 #' @export
 #' @md
 drop_burnin <- function(model, burn_in) {
@@ -232,10 +228,6 @@ drop_burnin <- function(model, burn_in) {
 #' about_variable(
 #'   variable = "mu[1,2]",
 #'   model = example_model_1chain
-#' )
-#' about_variable(
-#'   variable = "gamma[5]",
-#'   model = example_model_2chains
 #' )
 #'
 #' @export
@@ -398,7 +390,7 @@ get_pi_dataframes <- function(model) {
   # get a data frame of pis for a specific writer
   get_writer_pis <- function(flat_pi, writer){
     # select writer's columns in flat_pi
-    writer_cols <- colnames(flat_pi)[grepl(paste0("pi\\[", writer, ",*"), colnames(flat_pi))]
+    writer_cols <- colnames(flat_pi)[grepl(paste0("pi\\[", writer, ","), colnames(flat_pi))]
     writer_pis <- flat_pi[,c("iters", "writer", writer_cols)]
     # add writer to data frame
     writer_pis$writer <- writer

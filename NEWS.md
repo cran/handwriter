@@ -1,6 +1,17 @@
+# handwriter 3.0.0
+
+* Major reductions made to the memory required by `process_batch_list()` so it can now process
+paragraph length documents from the CSAFE Handwriting Database on machines with 8 GB of RAM.
+
+* `process_batch_list()` now skips to the next document if an error is returned while trying to process a document. A log file records the document name(s) and error message(s) of any problem documents. If the user reruns `process_batch_list()` they now have the option to either try a second time to process problem documents or skip them entirely.
+
+* New function `get_clusters_batch()` calculates cluster assignments of all files in a directory.
+
+
 # handwriter 2.0.3
 
 * Fix initializer warning with arma::vec. Apparently different versions of gcc were raising warnings with the assignment of values in neighbors. The recommended fix was to use an initializer list.
+
 
 # handwriter 2.0.2
 
