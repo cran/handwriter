@@ -10,13 +10,11 @@ knitr::opts_chunk$set(
 library(handwriter)
 
 ## ----eval=FALSE---------------------------------------------------------------
-#  template <- make_clustering_templates(
-#    template_dir = "path/to/main_dir",
-#    template_images_dir = "path/to/main_dir/data/template_docs",
+#  template <- make_clustering_template(
+#    main_dir = "path/to/main_dir",
+#    template_docs = "path/to/main_dir/data/template_docs",
 #    writer_indices = c(7,10),
-#    max_edges = 25,
 #    centers_seed = 100,
-#    graphs_seed = 101,
 #    K = 40,
 #    num_dist_cores = 4,
 #    max_iters = 25)
@@ -29,8 +27,8 @@ template_data <- format_template_data(template = template)
 plot_cluster_fill_counts(template_data, facet = TRUE)
 
 ## ----eval = FALSE-------------------------------------------------------------
-#  model <- fit_model(template_dir = "path/to/main_dir",
-#                     model_images_dir = "path/to/main_dir/data/model_docs",
+#  model <- fit_model(main_dir = "path/to/main_dir",
+#                     model_docs = "path/to/main_dir/data/model_docs",
 #                     num_iters = 4000,
 #                     num_chains = 1,
 #                     num_cores = 2,
@@ -38,7 +36,7 @@ plot_cluster_fill_counts(template_data, facet = TRUE)
 #                     doc_indices = c(11, 14))
 
 ## -----------------------------------------------------------------------------
-model <- example_model_1chain
+model <- example_model
 
 ## -----------------------------------------------------------------------------
 plot_cluster_fill_counts(formatted_data=model, facet = TRUE)
@@ -60,15 +58,15 @@ model <- drop_burnin(model, burn_in = 25)
 
 ## ----eval = FALSE-------------------------------------------------------------
 #  analysis <- analyze_questioned_documents(
-#    template_dir = "path/to/main_dir",
-#    questioned_images_dir = "path/to/main_dir/questioned_docs",
+#    main_dir = "path/to/main_dir",
+#    questioned_docs = "path/to/main_dir/questioned_docs",
 #    model = model,
 #    writer_indices = c(8,11),
 #    doc_indices = c(13,16),
 #    num_cores = 2)
 
 ## -----------------------------------------------------------------------------
-analysis <- example_analysis_1chain
+analysis <- example_analysis
 
 ## -----------------------------------------------------------------------------
 plot_cluster_fill_counts(analysis, facet = TRUE)

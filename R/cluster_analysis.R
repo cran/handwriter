@@ -23,12 +23,11 @@
 #' writership for the questioned documents using Markov Chain Monte Carlo (MCMC) draws from a hierarchical
 #' model created with [`fit_model()`].
 #'
-#' @param template_dir A directory that contains a cluster template created by [`make_clustering_templates()`]
-#' @param questioned_images_dir A directory containing questioned documents
+#' @param main_dir A directory that contains a cluster template created by [`make_clustering_template()`]
+#' @param questioned_docs A directory containing questioned documents
 #' @param model A fitted model created by [`fit_model()`]
 #' @param num_cores An integer number of cores to use for parallel processing
 #'   with the `doParallel` package.
-#' @param num_graphs "All" or integer number of graphs to randomly select from each questioned document.
 #' @param writer_indices A vector of start and stop characters for writer IDs in file names
 #' @param doc_indices A vector of start and stop characters for document names in file names
 #' @return A list of likelihoods, votes, and posterior probabilities of
@@ -36,14 +35,13 @@
 #'
 #' @examples
 #' \dontrun{
-#' template_dir <- "/path/to/template_dir"
-#' questioned_images_dir <- "/path/to/questioned_images"
+#' main_dir <- "/path/to/main_dir"
+#' questioned_docs <- "/path/to/questioned_images"
 #' analysis <- analyze_questioned_documents(
-#'   template_dir = template_dir,
-#'   questioned_images_dir = questioned_images_dir,
+#'   main_dir = main_dir,
+#'   questioned_docs = questioned_docs,
 #'   model = model,
 #'   num_cores = 2,
-#'   num_graphs = "All",
 #'   writer_indices = c(2, 5),
 #'   doc_indices = c(7, 18)
 #' )
@@ -52,27 +50,26 @@
 #'
 #' @export
 #' @md
-analyze_questioned_documents <- function(template_dir, questioned_images_dir, model, num_cores, num_graphs = "All", writer_indices, doc_indices) {
+analyze_questioned_documents <- function(main_dir, questioned_docs, model, num_cores, writer_indices, doc_indices) {
   # bind global variables to fix check() note
   writer <- d <- NULL
   
   # process questioned documents
   message("Processing questioned documents...")
   process_batch_dir(
-    input_dir = questioned_images_dir,
-    output_dir = file.path(template_dir, "data", "questioned_graphs")
+    input_dir = questioned_docs,
+    output_dir = file.path(main_dir, "data", "questioned_graphs")
   )
 
   # load template
   message("Loading cluster template...")
-  template <- readRDS(file.path(template_dir, "data", "template.rds"))
+  template <- readRDS(file.path(main_dir, "data", "template.rds"))
 
   # get cluster assignments
   message("Getting cluster assignments for questioned documents...")
   questioned_clusters <- get_clusterassignment(
-    template_dir = template_dir,
+    main_dir = main_dir,
     input_type = "questioned",
-    num_graphs = num_graphs,
     writer_indices = writer_indices,
     doc_indices = doc_indices,
     num_cores = num_cores
@@ -159,6 +156,8 @@ analyze_questioned_documents <- function(template_dir, questioned_images_dir, mo
     return(likelihoods)
   }
   names(likelihood_evals) <- questioned_data$cluster_fill_counts$docname
+  
+  parallel::stopCluster(my_cluster)
 
   # tally votes
   message("Tallying votes...")
@@ -181,7 +180,7 @@ analyze_questioned_documents <- function(template_dir, questioned_images_dir, mo
     "graph_measurements" = questioned_data$graph_measurements,
     "cluster_fill_counts" = questioned_data$cluster_fill_counts
   )
-  saveRDS(analysis, file.path(template_dir, "data", "analysis.rds"))
+  saveRDS(analysis, file.path(main_dir, "data", "analysis.rds"))
 
   return(analysis)
 }
@@ -201,17 +200,16 @@ analyze_questioned_documents <- function(template_dir, questioned_images_dir, mo
 #' 
 #' @examples
 #' # calculate the accuracy for example analysis performed on test documents and a model with 1 chain
-#' calculate_accuracy(example_analysis_1chain)
+#' calculate_accuracy(example_analysis)
 #'
 #' \dontrun{
-#' template_dir <- "/path/to/template_dir"
+#' main_dir <- "/path/to/main_dir"
 #' test_images_dir <- "/path/to/test_images"
 #' analysis <- analyze_questioned_documents(
-#'   template_dir = template_dir,
-#'   questioned_images_dir = test_images_dir,
+#'   main_dir = main_dir,
+#'   questioned_docs = test_images_dir,
 #'   model = model,
 #'   num_cores = 2,
-#'   num_graphs = "All",
 #'   writer_indices = c(2, 5),
 #'   doc_indices = c(7, 18)
 #' )
@@ -221,8 +219,25 @@ analyze_questioned_documents <- function(template_dir, questioned_images_dir, mo
 #' @export
 #' @md
 calculate_accuracy <- function(analysis) {
+  # bind global variables to fix check() note
+  known_writer <- known_writer_ID <- NULL
+  
   pp <- analysis$posterior_probabilities
-  accuracy <- sum(diag(as.matrix(pp[, -c(1)]))) / nrow(pp)
+  # add column for known writer ID
+  pp <- pp %>% 
+    tidyr::separate(known_writer, into = c(NA, NA, "known_writer_ID"), remove = FALSE)
+  
+  # get questioned documents and writers
+  q_docs <- analysis$cluster_fill_counts$docname
+  q_writers <- analysis$cluster_fill_counts$writer
+  
+  # get the poster probability for each doc and the true writer
+  predictions <- sapply(1:length(q_docs), function(i) {
+    pp %>% 
+      dplyr::filter(known_writer_ID == q_writers[i]) %>%
+      dplyr::pull(q_docs[i])})
+  
+  accuracy <- sum(predictions) / length(predictions)
   return(accuracy)
 }
 
@@ -244,12 +259,8 @@ calculate_accuracy <- function(analysis) {
 #'
 #' @examples
 #' get_posterior_probabilities(
-#'   analysis = example_analysis_1chain,
-#'   questioned_doc = "w0009_s03_pWOZ_r01.png"
-#' )
-#' get_posterior_probabilities(
-#'   analysis = example_analysis_1chain,
-#'   questioned_doc = "w0030_s03_pWOZ_r01.png"
+#'   analysis = example_analysis,
+#'   questioned_doc = "w0030_s03_pWOZ_r01"
 #' )
 #'
 #' @md

@@ -17,7 +17,7 @@
 
 #' get_clusters_batch
 #'
-#' @param template A cluster template created with [`make_clustering_templates`]
+#' @param template A cluster template created with [`make_clustering_template`]
 #' @param input_dir A directory containing graphs created with [`process_batch_dir`]
 #' @param output_dir Output directory for cluster assignments
 #' @param writer_indices Vector of start and end indices for the writer id in
@@ -62,7 +62,7 @@ get_clusters_batch <- function(template, input_dir, output_dir, writer_indices, 
   }
 
   # list files in input dir
-  proclist <- list.files(input_dir, full.names = TRUE)
+  proclist <- list.files(input_dir, pattern = ".rds", full.names = TRUE)
 
   if (num_cores > 1) { # run in parallel
     my_cluster <- parallel::makeCluster(num_cores)
@@ -252,12 +252,163 @@ makeassignment <- function(imageListElement, templateCenterList, outliercut) {
   return(cluster)
 }
 
+#' MakeLetterListLetterSpecific
+#'
+#' Description
+#' 
+#' @param letterList List of letters in a handwriting sample
+#' @param dims Dimensions of the handwriting sample
+#' @return letterList with locations given with respect to each letter
+#' @noRd
+MakeLetterListLetterSpecific = function(letterList, dims)
+{
+  # NOTE: There are two ways to specify the location of the paths and nodes in a
+  # letter. 1) by index number - each pixel in the letter's image (binary
+  # matrix) is numbered moving top to bottom and left to right. index =
+  # matrix(1:15, nrow=5, ncol=3) shows the index numbers of the pixels in a 5x3
+  # image. 2) by row and column numbers - each pixel in the letter's image can
+  # be referred to by its row number and column number. Rows are numbered from
+  # top to bottom and columns are numbered from left to right. Much of the code
+  # in this function switches between the two location types.
+  
+  # Make a list of the path from each letter. skeletons[[i]] contains the
+  # locations (index numbers) of the path of the i-th letter.
+  skeletons = lapply(letterList, function(x) x$path)
+  
+  # Make a list of the nodes in each letter. nodes[[i]] contains the
+  # locations (index numbers) of the nodes in the i-th letter.
+  nodes = lapply(letterList, function(x) x$nodes)
+  
+  # For each letter in the handwriting sample
+  for(i in 1:length(letterList))
+  { # Find locations (row and column numbers) of the path of the letter
+    # relative to the handwriting sample
+    path_rc = i_hs_to_rc_hs(index_nums = skeletons[[i]], hs_num_rows = dims[1])
+    
+    # Find the row number of the top of the letter
+    letter_topmost_row = min(path_rc$row)
+    
+    # Find the row number of the bottom of the letter
+    letter_bottom_row = max(path_rc$row)
+    
+    # Find the column number of the leftmost column of the letter
+    letter_leftmost_col = min(path_rc$col)
+    
+    # Find the number of rows spanned by the letter
+    letter_num_rows  = letter_bottom_row - letter_topmost_row + 1
+    
+    # Find the locations (row and column number) of the nodes relative to the
+    # top and left side of the letter
+    nodes_rc = i_hs_to_rc_letter(index_nums = nodes[[i]], 
+                                 hs_num_rows = dims[1], 
+                                 letter_topmost_row = letter_topmost_row,
+                                 letter_leftmost_col = letter_leftmost_col)
+    
+    # Find the locations (index numbers) of each path in the letter relative to the top and left
+    # side of the letter
+    letterList[[i]]$allPaths = lapply(letterList[[i]]$allPaths, 
+                                      function(x){
+                                        # Find the locations (index numbers) of the path
+                                        # in the letter image
+                                        i_hs_to_i_letter(index_nums = x, 
+                                                         hs_num_rows = dims[1],
+                                                         letter_num_rows = letter_num_rows,
+                                                         letter_topmost_row = letter_topmost_row,
+                                                         letter_leftmost_col = letter_leftmost_col)
+                                      })
+    
+    # Find the locations (index numbers) of the nodes in the adjacency matrix relative to the 
+    # handwriting sample
+    nameVect_i = i_hs_to_i_letter(index_nums = as.numeric(colnames(letterList[[i]]$adjMatrix)), 
+                                  hs_num_rows = dims[1], 
+                                  letter_num_rows = letter_num_rows,
+                                  letter_topmost_row = letter_topmost_row,
+                                  letter_leftmost_col = letter_leftmost_col)
+    
+    # Change the row and column names of the adjacency matrix to the locations (index numbers)
+    # of the nodes relative to the top and left of the letter
+    colnames(letterList[[i]]$adjMatrix) = format(nameVect_i, scientific = FALSE, trim = TRUE)
+    rownames(letterList[[i]]$adjMatrix) = colnames(letterList[[i]]$adjMatrix)
+    
+    # Find the locations (row and column numbers) of the letter's centroid relative to the 
+    # top and left of the letter
+    centroid_rc = rc_hs_to_rc_letter(row_nums = letterList[[i]]$characterFeatures$centroid_y,
+                                     col_nums = letterList[[i]]$characterFeatures$centroid_x,
+                                     letter_topmost_row = letter_topmost_row,
+                                     letter_leftmost_col = letter_leftmost_col)
+    letterList[[i]]$characterFeatures$centroid_y = centroid_rc$row
+    letterList[[i]]$characterFeatures$centroid_x = centroid_rc$col
+    
+    # Store the locations (row and column numbers) of lHalf relative to the
+    # top and left of the letter.
+    lHalf_rc = i_hs_to_rc_letter(index_nums = letterList[[i]]$characterFeatures$lHalf, 
+                                 hs_num_rows = dims[1], 
+                                 letter_topmost_row = letter_topmost_row,
+                                 letter_leftmost_col = letter_leftmost_col)
+    letterList[[i]]$characterFeatures$lHalfr = lHalf_rc$row
+    letterList[[i]]$characterFeatures$lHalfc = lHalf_rc$col
+    
+    # Store the locations (row and column numbers) of rHalf relative to the
+    # top and left of the letter.
+    rHalf_rc = i_hs_to_rc_letter(index_nums = letterList[[i]]$characterFeatures$rHalf, 
+                                 hs_num_rows = dims[1], 
+                                 letter_topmost_row = letter_topmost_row,
+                                 letter_leftmost_col = letter_leftmost_col)
+    letterList[[i]]$characterFeatures$rHalfr = rHalf_rc$row
+    letterList[[i]]$characterFeatures$rHalfc = rHalf_rc$col
+    
+    # Find the locations (row and column numbers) of the left and right centroids
+    # relative to the top and left of the letter
+    letterList[[i]]$characterFeatures$lCentroid = c(mean(lHalf_rc$row), mean(lHalf_rc$col))
+    letterList[[i]]$characterFeatures$rCentroid = c(mean(rHalf_rc$row), mean(rHalf_rc$col))
+    
+    # Store the locations (index number) of lHalf and rHalf relative to the
+    # top and left of the letter
+    letterList[[i]]$characterFeatures$lHalf = i_hs_to_i_letter(index_nums = letterList[[i]]$characterFeatures$lHalf, 
+                                                               hs_num_rows = dims[1], 
+                                                               letter_num_rows = letter_num_rows,
+                                                               letter_topmost_row = letter_topmost_row,
+                                                               letter_leftmost_col = letter_leftmost_col)
+    letterList[[i]]$characterFeatures$rHalf = i_hs_to_i_letter(index_nums = letterList[[i]]$characterFeatures$rHalf, 
+                                                               hs_num_rows = dims[1], 
+                                                               letter_num_rows = letter_num_rows,
+                                                               letter_topmost_row = letter_topmost_row,
+                                                               letter_leftmost_col = letter_leftmost_col)
+    
+    # Set the locations (row and column numbers) of the bottom row and rightmost column of the letter
+    # relative to the top and left of the letter. Set the topmost row and leftmost column both to 1.
+    bottom_right_rc = rc_hs_to_rc_letter(row_nums = letterList[[i]]$characterFeatures$bottom_row,
+                                         col_nums = letterList[[i]]$characterFeatures$rightmost_col,
+                                         letter_topmost_row = letter_topmost_row,
+                                         letter_leftmost_col = letter_leftmost_col)
+    letterList[[i]]$characterFeatures$bottom_row = bottom_right_rc$row
+    letterList[[i]]$characterFeatures$rightmost_col = bottom_right_rc$col
+    letterList[[i]]$characterFeatures$topmost_row = 1
+    letterList[[i]]$characterFeatures$leftmost_col = 1
+    
+    # Set the locations (index numbers) of the path of the letter 
+    # relative to the top and left of the letter
+    letterList[[i]]$path = i_hs_to_i_letter(index_nums = letterList[[i]]$path,
+                                            hs_num_rows = dims[1],
+                                            letter_num_rows = letter_num_rows,
+                                            letter_topmost_row = letter_topmost_row,
+                                            letter_leftmost_col = letter_leftmost_col)
+    
+    # Set the locations (index numbers) of the nodes in the letter 
+    # relative to the top and left of the letter
+    letterList[[i]]$nodes = i_hs_to_i_letter(index_nums = letterList[[i]]$nodes,
+                                             hs_num_rows = dims[1],
+                                             letter_num_rows = letter_num_rows,
+                                             letter_topmost_row = letter_topmost_row,
+                                             letter_leftmost_col = letter_leftmost_col)
+  }
+  return(letterList)
+}
 
 #' get_clusterassignment
 #'
-#' @param template_dir Directory containing a cluster template created with `make_clustering_templates`
+#' @param main_dir Directory containing a cluster template created with `make_clustering_template`
 #' @param input_type `model` or `questioned`
-#' @param num_graphs 'All' or integer number of graphs to randomly select from each document.
 #' @param writer_indices Vector of start and end indices for the writer id in
 #'   the document names
 #' @param doc_indices Vector of start and end indices for the document id in the
@@ -267,15 +418,15 @@ makeassignment <- function(imageListElement, templateCenterList, outliercut) {
 #' @return list of processed handwriting with cluster assignments for each graph
 #'
 #' @noRd
-get_clusterassignment <- function(template_dir, input_type, num_graphs = "All", writer_indices, doc_indices, num_cores) {
+get_clusterassignment <- function(main_dir, input_type, writer_indices, doc_indices, num_cores) {
   # bind global variables to fix check() note
   i <- outliercut <- docname <- NULL
 
   # load cluster file if it already exists
   if (input_type == "model") {
-    cluster_file <- file.path(template_dir, "data", "model_clusters.rds")
+    cluster_file <- file.path(main_dir, "data", "model_clusters.rds")
   } else if (input_type == "questioned") {
-    cluster_file <- file.path(template_dir, "data", "questioned_clusters.rds")
+    cluster_file <- file.path(main_dir, "data", "questioned_clusters.rds")
   } else {
     stop("Unknown input type. Use model or questioned.")
   }
@@ -285,31 +436,31 @@ get_clusterassignment <- function(template_dir, input_type, num_graphs = "All", 
   }
 
   # load template
-  if (file.exists(file.path(template_dir, "data", "template.rds"))) {
-    template <- readRDS(file.path(template_dir, "data", "template.rds"))
+  if (file.exists(file.path(main_dir, "data", "template.rds"))) {
+    template <- readRDS(file.path(main_dir, "data", "template.rds"))
   } else {
-    stop(paste("There is no cluster template in", template_dir))
+    stop(paste("There is no cluster template in", main_dir))
   }
 
   # get input directory
   if (input_type == "model") {
-    input_dir <- file.path(template_dir, "data", "model_graphs")
+    input_dir <- file.path(main_dir, "data", "model_graphs")
   } else {
-    input_dir <- file.path(template_dir, "data", "questioned_graphs")
+    input_dir <- file.path(main_dir, "data", "questioned_graphs")
   }
 
   # make output directory
   if (input_type == "model") {
-    output_dir <- file.path(template_dir, "data", "model_clusters")
+    output_dir <- file.path(main_dir, "data", "model_clusters")
   } else {
-    output_dir <- file.path(template_dir, "data", "questioned_clusters")
+    output_dir <- file.path(main_dir, "data", "questioned_clusters")
   }
   if (!dir.exists(output_dir)) {
     dir.create(output_dir)
   }
 
   # list files in input dir
-  proclist <- list.files(input_dir, full.names = TRUE)
+  proclist <- list.files(input_dir, pattern = '.rds', full.names = TRUE)
 
   my_cluster <- parallel::makeCluster(num_cores)
   doParallel::registerDoParallel(my_cluster)
@@ -374,13 +525,6 @@ get_clusterassignment <- function(template_dir, input_type, num_graphs = "All", 
     df$pc_rotation <- apply(df, 1, get_pc_rotation)
     df$pc_wrapped <- 2 * df$pc_rotation
 
-    # sample graphs
-    if (num_graphs != "All") {
-      df <- df %>%
-        dplyr::group_by(docname) %>%
-        dplyr::slice_sample(n = num_graphs)
-    }
-
     # sort columns
     df <- df[, c("docname", "writer", "doc", "cluster", "slope", "xvar", "yvar", "covar", "pc_rotation", "pc_wrapped")]
 
@@ -388,12 +532,14 @@ get_clusterassignment <- function(template_dir, input_type, num_graphs = "All", 
 
     return(df)
   }
+  
+  parallel::stopCluster(my_cluster)
 
   # save clusters
   if (input_type == "model") {
-    saveRDS(proclist, file.path(template_dir, "data", "model_clusters.rds"))
+    saveRDS(proclist, file.path(main_dir, "data", "model_clusters.rds"))
   } else {
-    saveRDS(proclist, file.path(template_dir, "data", "questioned_clusters.rds"))
+    saveRDS(proclist, file.path(main_dir, "data", "questioned_clusters.rds"))
   }
 
   return(proclist)

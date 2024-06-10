@@ -17,10 +17,42 @@
 
 # Internal Functions ------------------------------------------------------
 
+addGraphFeatures <- function(comps, img, dims) {
+  # For each component in comps, adds features, such as apsect info and centroid info, for each graph in the component
+  n <- length(comps)
+  for (i in 1:n){
+    if (length(comps[[i]]$paths$graphList) > 0){
+      comps[[i]]$paths$graphList <- addGraphFeaturesForComponent(img = img, 
+                                                                 graphList = comps[[i]]$paths$graphList, 
+                                                                 graphs = comps[[i]]$paths$graphs, 
+                                                                 dims = dims)
+    }
+  }
+  
+  return(comps)
+}
+
+addGraphFeaturesForComponent <- function(img, graphList, graphs, dims) {
+  # adds features, such as apsect info and centroid info, for each graph
+  featureSets <- extract_character_features(img, graphList, dims)
+  
+  for (i in 1:length(graphs))
+  {
+    graphList[[i]]$characterFeatures <- featureSets[[i]]
+  }
+  
+  letterPlaces <- matrix(unlist(lapply(featureSets, FUN = function(x) {
+    c(x$line_number, x$order_within_line)
+  })), ncol = 2, byrow = TRUE)
+  letterOrder <- order(letterPlaces[, 1], letterPlaces[, 2])
+  graphList <- graphList[letterOrder]
+  
+  return(graphList)
+}
 
 #' extract_character_features
 #'
-#' Primary driver of feature extraction. Parses all characters from a processed image.
+#' Parses all characters from a processed image.
 #' 
 #' @param img The thinned image bitmap
 #' @param character_lists Output from processHandwriting$letterLists
@@ -28,17 +60,17 @@
 #' @return nested lists associating features to respective characters.
 #' 
 #' @noRd
-extract_character_features = function(img, character_lists,dims){
+extract_character_features <- function(img, character_lists, dims){
   
   character_features = list()
   
   for(i in 1:length(character_lists)){
-    cur_features = char_to_feature(character_lists[[i]],dims, i)
-    character_features = append(character_features,list(cur_features))
+    cur_features = char_to_feature(character_lists[[i]], dims, i)
+    character_features = append(character_features, list(cur_features))
   }
  
   character_features = add_updown_neighboring_char_dist(character_features, character_lists, img, dims)
-  character_features = add_line_info(character_features,dims)
+  character_features = add_line_info(character_features, dims)
   character_features = nov_neighboring_char_dist(character_features)
   character_features = add_covariance_matrix(character_lists, character_features, dims)
   
@@ -59,50 +91,12 @@ extract_character_features = function(img, character_lists,dims){
 char_to_feature = function(character, dims, uniqueid){
   aspect_info = get_aspect_info(character$path,dims)
   centroid_info = get_centroid_info(character$path,dims)
-  features = c(aspect_info,centroid_info)
+  features = c(aspect_info, centroid_info)
   
   #persistent index for sorting/rearranging the features list
   features$uniqueid = uniqueid
   
   return(features)
-}
-
-
-#' plotNodesLine
-#'
-#' Internal function for drawing a line from two given nodes.
-#'  
-#' @param doc A document processed with [handwriter::processHandwriter()]
-#' @param nodeSize size of node; default set to 3
-#' @param nodeColor color of node; default set to red
-#' @return a line in between the two nodes
-#' 
-#' @noRd
-plotNodesLine = function(doc, nodeSize = 3, nodeColor = "red")
-{
-  X <- Y <- NULL
-  p = plotImageThinned(doc)
-  pointSet = data.frame(X = ((doc$process$nodes - 1) %/% dim(doc$image)[1]) + 1, Y = dim(doc$image)[1] - ((doc$process$nodes - 1) %% dim(doc$image)[1]))
-  sx = pointSet[[1]][[1]]
-  sy = pointSet[[2]][[1]]
-  ex = pointSet[[1]][[2]]
-  ey = pointSet[[2]][[2]]
-  p = p + geom_point(data = pointSet, aes(X, Y), size = nodeSize, shape = I(16), color = I(nodeColor), alpha = I(.4)) + geom_segment(x = sx, y = sy, xend = ex, yend = ey)
-  
-  return(p)
-}
-
-plotNodesLine1 = function(doc, nodeSize = 3, nodeColor = "red")
-{
-  X <- Y <- NULL
-  p = plotImageThinned(doc)
-  pointSet = data.frame(X = ((doc$process$nodes - 1) %/% dim(doc$image)[1]) + 1, Y = dim(doc$image)[1] - ((doc$process$nodes - 1) %% dim(doc$image)[1]))
-  sx = pointSet[[1]][[1]]
-  sy = pointSet[[2]][[1]]
-  ex = pointSet[[1]][[2]]
-  ey = pointSet[[2]][[2]]
-  p = p + geom_point(data = pointSet, aes(X, Y), size = nodeSize, shape = I(16), color = I(nodeColor), alpha = I(.4)) + geom_curve(x = sx, y = sy, xend = ex, yend = ey, curvature = 0, angle = 180)
-  return(p)
 }
 
 #' get_aspect_info
@@ -196,7 +190,7 @@ get_centroid_info = function(character, dims)
 #' @return nested lists associating features to respective characters.
 #' 
 #' @noRd
-add_covariance_matrix = function(character_lists, character_features, dims){
+add_covariance_matrix <- function(character_lists, character_features, dims){
   for(i in 1:length(character_lists)){
     matrix = i_to_rc(character_lists[[i]]$path, dims)
     x = matrix[,2]
@@ -225,7 +219,7 @@ add_covariance_matrix = function(character_lists, character_features, dims){
 #' @return Appends line information to character features
 #' 
 #' @noRd
-add_line_info = function(character_features,dims){
+add_line_info <- function(character_features,dims){
   line_info = line_number_extract(all_down_dists(character_features), all_centroids(character_features), dims)
   line_order = lapply(line_info, sort)
   for(i in 1:length(character_features)){
@@ -241,7 +235,7 @@ add_line_info = function(character_features,dims){
 
 
 #Return a list of the distances from the top of a character to the first thing above it
-add_updown_neighboring_char_dist = function(character_features, character_lists, img, dims){
+add_updown_neighboring_char_dist <- function(character_features, character_lists, img, dims){
 
   #For each character
   for(i in 1:length(character_lists)){
@@ -274,32 +268,9 @@ add_updown_neighboring_char_dist = function(character_features, character_lists,
   return(character_features)
 }
 
-
-#' get_loop_info
-#'
-#' Associator of loop to character association
-#' Relevant Features:
-#' Loop Count, how many loops are found in the letter
-#' Loop Major, length of farthest line that can be drawn inside of a loop
-#' Loop Minor, length of the perpendicular bisector of the loop major.
-#' 
-#' @param character Target for loop association
-#' @param dims Dimensions of binary image
-#' @return Loop information to respective character
-#' 
-#' @noRd
-get_loop_info = function(character,dims){
-  
-  #loops = loop_extract(character$allPaths)
-  #loop_info = list(loop_count = length(loops),loops = loops)
-  loop_info = list(loop_count = length(character$loops), loops = character$loops)
-  return(loop_info)
-}
-
-
 # Principle: Appending inside of a nested loop
 # NOTE: Uses distances between centroids, NOT right edge to left edge
-nov_neighboring_char_dist = function(character_features){
+nov_neighboring_char_dist <- function(character_features){
   by_line = character_features_by_line(character_features)
   for(line in 1:length(by_line)){
     for(i in 1:length(by_line[[line]])){
@@ -323,44 +294,21 @@ nov_neighboring_char_dist = function(character_features){
 }
 
 #sort character features indexed by their respective line
-character_features_by_line = function(character_features){
+character_features_by_line <- function(character_features){
   max_line = -Inf
   for(i in 1:length(character_features)){
     max_line = max(max_line, character_features[[i]]$line_number)
   }
   
-  characters_by_line = rep(list(list()),max_line)
+  characters_by_line = rep(list(list()), max_line)
   
   for(j in 1:length(character_features)){
-    
-    characters_by_line[[character_features[[j]]$line_number]] = append(characters_by_line[[character_features[[j]]$line_number]],list(character_features[[j]]))
+    characters_by_line[[character_features[[j]]$line_number]] <- append(characters_by_line[[character_features[[j]]$line_number]], list(character_features[[j]]))
   }
 
   return(characters_by_line)
 }
 
-#' loop_extract
-#'
-#' Iterates through all available paths from processHandwriting()
-#' Picks out loops for later character association.
-#' 
-#' @param allPaths All character (formerly letter) paths from processHandwriting()
-#' 
-#' @return List of all loops 
-#' 
-#' @noRd
-loop_extract = function(allPaths){
-  loops = list()
-  for(i in 1:length(allPaths)){
-    if(length(allPaths)<1){
-      next
-    }
-    if(allPaths[[i]][[1]]==allPaths[[i]][[length(allPaths[[i]])]]){
-      loops = c(loops,list(allPaths[[i]]))
-    }
-  }
-  return(loops)
-}
 
 #' all_centroids
 #'
@@ -371,10 +319,10 @@ loop_extract = function(allPaths){
 #' @return All centroids concatenated with one another (unlisted)
 #' 
 #' @noRd
-all_centroids = function(character_features){
+all_centroids <- function(character_features){
   centroids = list()
   for(i in 1:length(character_features)){
-    centroids = c(centroids,character_features[[i]]$centroid_index)
+    centroids = c(centroids, character_features[[i]]$centroid_index)
   }
   return(unlist(centroids))
 }
@@ -388,10 +336,10 @@ all_centroids = function(character_features){
 #' @return All downdistance concatenated with one another (unlisted)
 #' 
 #' @noRd
-all_down_dists = function(character_features){
-  down_dists = list()
+all_down_dists <- function(character_features){
+  down_dists <- list()
   for(i in 1:length(character_features)){
-    down_dists = c(down_dists,character_features[[i]]$down_dist)
+    down_dists <- c(down_dists, character_features[[i]]$down_dist)
   }
   return(unlist(down_dists))
 }
@@ -409,7 +357,7 @@ all_down_dists = function(character_features){
 #' @importFrom utils head
 #' 
 #' @noRd
-line_number_extract = function(down_dists, all_centroids, dims){
+line_number_extract <- function(down_dists, all_centroids, dims){
   centroid_rci = matrix(i_to_rci(all_centroids,dims), ncol = 3)
   #sorting list based on y
   centroid_rci = matrix(centroid_rci[order(centroid_rci[,1]),], ncol = 3)
@@ -425,7 +373,6 @@ line_number_extract = function(down_dists, all_centroids, dims){
   
   threshold_num = as.numeric(median(trimmed)/2)
 
-  
   lines = list()
   cur_line = vector(mode="double", length=0)
   threshold = vector(mode="double", length=0)

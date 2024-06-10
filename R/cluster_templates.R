@@ -18,111 +18,108 @@
 # EXPORTED ----------------------------------------------------------------
 
 
-#' Make Clustering Templates
+#' Make Clustering Template
 #'
-#' `make_clustering_templates()` applies a K-means clustering algorithm to the
+#' `make_clustering_template()` applies a K-means clustering algorithm to the
 #' input handwriting samples pre-processed with [`process_batch_dir()`] and saved
-#' in the input folder `template_dir > data > template_graphs`. The K-means
+#' in the input folder `main_dir > data > template_graphs`. The K-means
 #' algorithm sorts the graphs in the input handwriting samples into groups, or
 #' *clusters*, of similar graphs.
 #'
-#' @param template_dir Main directory that will store template files
-#' @param template_images_dir A directory containing template training images
+#' @param main_dir Main directory that will store template files
+#' @param template_docs A directory containing template training images
 #' @param writer_indices A vector of the starting and ending location of the
 #'   writer ID in the file name.
-#' @param max_edges Maximum number of edges allowed in input graphs. Graphs with
-#'   more than the maximum number will be ignored.
 #' @param centers_seed Integer seed for the random number generator when
 #'   selecting starting cluster centers.
-#' @param graphs_seed Integer seed for the random number generator when
-#'   selecting graphs. If `num_graphs = 'All'` then `graphs_seed` won't be used
 #' @param K Integer number of clusters
 #' @param num_dist_cores Integer number of cores to use for the distance
 #'   calculations in the K-means algorithm. Each iteration of the K-means
 #'   algorithm calculates the distance between each input graph and each cluster
 #'   center.
-#' @param num_path_cuts Integer number of sections to cut each graph into for
-#'   shape comparison
 #' @param max_iters Maximum number of iterations to allow the K-means algorithm
 #'   to run
-#' @param gamma Parameter for outliers
-#' @param num_graphs Number of graphs to use to create the cluster template.
-#'   `All` uses all available graphs. An integer uses a random sample of graphs.
 #' @return List containing the cluster template
 #'
 #' @examples
 #' \dontrun{
 #' main_dir <- "path/to/folder"
-#' template_images_dir <- system.file("extdata/example_images/template_training_images",
+#' template_docs <- system.file("extdata/example_images/template_training_images",
 #'   package = "handwriter"
 #' )
-#' template_list <- make_clustering_templates(
-#'   template_dir = main_dir,
-#'   template_images_dir = template_images_dir,
+#' template_list <- make_clustering_template(
+#'   main_dir = main_dir,
+#'   template_docs = template_docs,
 #'   writer_indices = c(2, 5),
 #'   K = 10,
 #'   num_dist_cores = 2,
-#'   max_iters = 3,
-#'   num_graphs = 1000,
+#'   max_iters = 25,
 #'   centers_seed = 100,
-#'   graphs_seed = 200
 #' )
 #' }
 #'
 #' @export
 #' @md
-make_clustering_templates <- function(template_dir,
-                                      template_images_dir,
-                                      writer_indices,
-                                      max_edges = 30,
-                                      centers_seed,
-                                      graphs_seed,
-                                      K = 40,
-                                      num_dist_cores = 1,
-                                      num_path_cuts = 8,
-                                      max_iters = 1,
-                                      gamma = 3,
-                                      num_graphs = "All") { # use integer for testing with a subset of graphs or use 'All'
-
+make_clustering_template <- function(main_dir,
+                                     template_docs,
+                                     writer_indices,
+                                     centers_seed,
+                                     K = 40,
+                                     num_dist_cores = 1,
+                                     max_iters = 25) {
+  
   options(scipen = 999)
-
+  
+  # Check maximum number of iterations ----
+  if (max_iters < 25) {
+    warning("For case-work, the maximum number of iterations must be greater than or equal to 25. Fewer iterations are only intended for development testing.")
+  }
+  
+  # Check number of clusters ----
+  if (K != 40) {
+    warning("For case-work, the number of clusters K must be 40. Other numbers of clusters are only intended for development testing.")
+  }
+  
+  # Set internal parameters ----
+  num_path_cuts = 8
+  max_edges = 30
+  gamma = 3
+  
   # Setup folders ----
-  do_setup(template_dir = template_dir)
-
+  do_setup(main_dir = main_dir)
+  
   # Process training documents ----
   message("Processing template training documents...")
   process_batch_dir(
-    input_dir = template_images_dir,
-    output_dir = file.path(template_dir, "data", "template_graphs")
+    input_dir = template_docs,
+    output_dir = file.path(main_dir, "data", "template_graphs")
   )
-
+  
   # Make proclist ----
-  template_proc_list <- make_proc_list(template_dir = template_dir)
-
+  template_proc_list <- make_proc_list(main_dir = main_dir)
+  
   # Delete large graphs ----
   # Make table of number of graphs with various numbers of loops and edges
-  strata <- get_strata(template_proc_list = template_proc_list, template_dir = template_dir)
-
+  strata <- get_strata(template_proc_list = template_proc_list, main_dir = main_dir)
+  
   # Delete graphs with too many edges
-  template_proc_list <- delete_crazy_graphs(template_proc_list = template_proc_list, max_edges = max_edges, template_dir = template_dir)
-
+  template_proc_list <- delete_crazy_graphs(template_proc_list = template_proc_list, max_edges = max_edges, main_dir = main_dir)
+  
   # Make images list ----
-  full_template_images_list <- make_images_list(
+  template_images_list <- make_images_list(
     template_proc_list = template_proc_list,
-    template_dir = template_dir,
+    main_dir = main_dir,
     writer_indices = writer_indices
   )
-
+  
   # Set outliers parameter
-  num_outliers <- round(.25 * length(full_template_images_list))
-
-  template_images_list <- chooseGraphs(seed = graphs_seed, num_graphs = num_graphs, full_template_images_list = full_template_images_list)
-
+  num_outliers <- round(.25 * length(template_images_list))
+  
   # Choose cluster centers. NOTE: Even if you are testing the code on a small number of
   # graphs, you need to select centers from the full list of graphs.
   message("Choosing starting cluster centers...")
-  centers <- chooseCenters(seed = centers_seed, K = K, template_proc_list = template_proc_list, template_images_list = full_template_images_list)
-
+  centers <- chooseCenters(seed = centers_seed, K = K, template_proc_list = template_proc_list, template_images_list = template_images_list)
+  
   # Run Kmeans
   template <- letterKmeansWithOutlier_parallel(
     template_proc_list = template_proc_list,
@@ -134,16 +131,42 @@ make_clustering_templates <- function(template_dir,
     num_outliers = num_outliers,
     centers = centers,
     num_dist_cores = num_dist_cores,
-    centers_seed = centers_seed,
-    graphs_seed = graphs_seed
+    centers_seed = centers_seed
   )
   message("Saving template...")
-  saveRDS(template, file = file.path(template_dir, "data", "template.rds"))
+  saveRDS(template, file = file.path(main_dir, "data", "template.rds"))
   return(template)
 }
 
 
 # Internal Functions ------------------------------------------------------
+
+#' AddSamplingStrata
+#'
+#' Add two new fields, numloops and stratum, to the characterFeatures list for
+#' each letter in letterList.
+#'
+#' @param letterList List of letters
+#' @return List of letters
+#'
+#' @noRd
+AddSamplingStrata = function(letterList){
+  # For each letter in the sample
+  for(i in 1:length(letterList)){
+    # Count the number of loops in the letter and store as a new field called numloops under characterFields
+    letterList[[i]]$characterFeatures$numloops = length(loop_extract(letterList[[i]]$allPaths))
+    # Add a new field called stratum under characterFields, where stratum is "1loop", "2loops", or the length of allPaths
+    if(letterList[[i]]$characterFeatures$numloops == 2){
+      letterList[[i]]$characterFeatures$stratum = "2loop"
+    } else if(letterList[[i]]$characterFeatures$numloops == 1){
+      letterList[[i]]$characterFeatures$stratum = "1loop"
+    } else {
+      letterList[[i]]$characterFeatures$stratum = length(letterList[[i]]$allPaths)
+    }
+  }
+  return(letterList)
+}
+
 
 
 #' Make Processed List
@@ -151,48 +174,40 @@ make_clustering_templates <- function(template_dir,
 #' `process_batch_dir()` needs to be run first to processes handwriting documents
 #' in a specified folder. `process_batch_dir()` creates an RDS file for each
 #' document that contains the extracted graphs in the document and saves the
-#' file in `template_dir > data > template_graphs` in rds files. `make_proc_list()`
-#' loads the graph RDS files from `template_dir > data > template_graphs` into a
+#' file in `main_dir > data > template_graphs` in rds files. `make_proc_list()`
+#' loads the graph RDS files from `main_dir > data > template_graphs` into a
 #' single list. This function also adds the graph image matrix and the number of
 #' loops and edges to each item in the list. This function also records the
 #' locations information of each graph with respect to the individual graph
 #' instead of the handwriting document.
 #'
-#' @param template_dir Input directory
-#' @return List containing graphs prepared for template creation. template_proc_list.rds
-#'   is saved in template_dir > data.
+#' @param main_dir Input directory
+#' @return List containing graphs prepared for template creation.
 #'
 #' @noRd
-make_proc_list <- function(template_dir) {
-  
-  # Load proc list if it already exists
-  if (file.exists(file.path(template_dir, "data", "template_proc_list.rds"))){
-    message("Loading template proc list...")
-    template_proc_list <- readRDS(file.path(template_dir, "data", "template_proc_list.rds"))
-    return(template_proc_list)
-  }
+make_proc_list <- function(main_dir) {
   
   # List files in template directory > data > template_graphs
-  df <- data.frame(graph_paths = list.files(file.path(template_dir, "data", "template_graphs"), pattern = ".rds", full.names = TRUE), stringsAsFactors = FALSE)
-
+  df <- data.frame(graph_paths = list.files(file.path(main_dir, "data", "template_graphs"), pattern = ".rds", full.names = TRUE), stringsAsFactors = FALSE)
+  
   # Load graphs
   message("Loading processed template training documents...")
   template_proc_list <- lapply(df$graph_paths, readRDS)
-
+  
   # Get the image plot (binarized matrix) of each graph from each handwriting sample
   message("Adding image plots for each graph...")
   template_proc_list <- lapply(template_proc_list, function(x) {
     x$process$letterList <- AddLetterImages(x$process$letterList, dim(x$image))
     return(x)
   })
-
+  
   # Get the number of loops and edges in each graph
-  message("Adding sampling strata for each graph")
+  message("Adding sampling strata for each graph...")
   template_proc_list <- lapply(template_proc_list, function(x) {
     x$process$letterList <- AddSamplingStrata(x$process$letterList)
     return(x)
   })
-
+  
   # For each graph in each handwriting sample, get the locations of the nodes,
   # paths, centroids, and other items with respect to the individual graph
   # instead of the handwriting sample. WARNING: This messes up plotting.
@@ -201,11 +216,7 @@ make_proc_list <- function(template_dir) {
     x$process$letterList <- MakeLetterListLetterSpecific(x$process$letterList, dim(x$image))
     return(x)
   }) # THIS MESSES UP PLOTTING!!
-
-  # Save to template directory
-  message("Saving template_dir > data > template_proc_list.rds...")
-  saveRDS(template_proc_list, file.path(template_dir, "data", "template_proc_list.rds"))
-
+  
   return(template_proc_list)
 }
 
@@ -216,15 +227,15 @@ make_proc_list <- function(template_dir) {
 #' each strata (number of loops or edges)
 #'
 #' @param template_proc_list List of graphs output by make_proc_list()
-#' @param template_dir Input directory
+#' @param main_dir Input directory
 #' @return Dataframe of number of graphs per strata. The dataframe is saved in
 #'   tempalte_dir > data.
 #'
 #' @noRd
-get_strata <- function(template_proc_list, template_dir) {
+get_strata <- function(template_proc_list, main_dir) {
   tic <- Sys.time() # start timer
   message("Start making a dataframe of the number of graphs with various numbers of loops and edges...")
-
+  
   # Set Max Number of Edges Per Graph -------------------------------------------------
   # Make vectors of document #, letter #, and strata for each graph
   doc0 <- letter0 <- stratum0 <- c()
@@ -235,23 +246,14 @@ get_strata <- function(template_proc_list, template_dir) {
       stratum0 <- c(stratum0, template_proc_list[[i]]$process$letterList[[j]]$characterFeatures$stratum)
     }
   }
-
+  
   # Make dataframe of strata
   stratum0_fac <- factor(stratum0, levels = c("1loop", "2loop", sort(as.numeric(unique(stratum0[!(stratum0 %in% c("1loop", "2loop"))])))))
   stratum_df <- data.frame(doc0, letter0, stratum0_fac)
   stratum_table <- stratum_df %>%
     dplyr::group_by(stratum0_fac) %>%
     dplyr::summarize(n = dplyr::n())
-
-  # Save strata to csv file
-  message("Saving strata dataframe to template_dir > data > template_strata.rds...")
-  saveRDS(stratum_table, file.path(template_dir, "data", "template_strata.rds"))
-
-  # Calculate processing time
-  toc <- Sys.time()
-  elapsed <- paste0(round(as.numeric(difftime(time1 = toc, time2 = tic, units = "min")), 3), " minutes")
-  message(sprintf("Creating and saving strata dataframe: %s", elapsed))
-
+  
   return(stratum_table)
 }
 
@@ -263,13 +265,13 @@ get_strata <- function(template_proc_list, template_dir) {
 #'
 #' @param template_proc_list List of graphs output by make_proc_list()
 #' @param max_edges Maximum number of edges to allow in each graph
-#' @param template_dir Input directory
+#' @param main_dir Input directory
 #' @return List of graphs
 #'
 #' @noRd
-delete_crazy_graphs <- function(template_proc_list, max_edges, template_dir) {
+delete_crazy_graphs <- function(template_proc_list, max_edges, main_dir) {
   tic <- Sys.time() # start timer
-
+  
   # Make vectors of document #, letter #, and strata for each graph
   doc0 <- letter0 <- stratum0 <- c()
   for (i in 1:length(template_proc_list)) {
@@ -279,11 +281,11 @@ delete_crazy_graphs <- function(template_proc_list, max_edges, template_dir) {
       stratum0 <- c(stratum0, template_proc_list[[i]]$process$letterList[[j]]$characterFeatures$stratum)
     }
   }
-
+  
   # Make dataframe of strata
   stratum0_fac <- factor(stratum0, levels = c("1loop", "2loop", sort(as.numeric(unique(stratum0[!(stratum0 %in% c("1loop", "2loop"))])))))
   stratum_df <- data.frame(doc0, letter0, stratum0_fac)
-
+  
   # Delete graphs that have more than max edges from template_proc_list
   message("Deleting graphs with too many edges...")
   ok_edges <- sort(as.numeric(unique(stratum0[!(stratum0 %in% c("1loop", "2loop"))])))
@@ -297,20 +299,13 @@ delete_crazy_graphs <- function(template_proc_list, max_edges, template_dir) {
     keep_graphs <- ok_df %>%
       dplyr::filter(doc0 == i)
     keep_graphs <- keep_graphs$letter
-
+    
     # Only keep graphs in doc i with fewer than max_edges edges
     template_proc_list[[i]]$process$letterList <- template_proc_list[[i]]$process$letterList[keep_graphs]
   }
-
-  # Save to template directory
-  message("Saving updated graph list to template_dir > data > template_proc_list.rds")
-  saveRDS(template_proc_list, file.path(template_dir, "data", "template_proc_list.rds"))
-
-  # Calculate processing time
-  toc <- Sys.time() # stop timer
-  elapsed <- paste0(round(as.numeric(difftime(time1 = toc, time2 = tic, units = "min")), 3), " minutes")
-  message(sprintf("Deleted graphs with more than %d edges: %s", max_edges, elapsed))
-
+  
+  message(sprintf("Deleted graphs with more than %d edges...", max_edges))
+  
   return(template_proc_list)
 }
 
@@ -322,15 +317,15 @@ delete_crazy_graphs <- function(template_proc_list, max_edges, template_dir) {
 #' centroid of the graph image.
 #'
 #' @param template_proc_list List of graphs output by make_proc_list()
-#' @param template_dir Input directory
-#' @return List of graphs. The list is saved as template_dir > data > template_images_list.rds
+#' @param main_dir Input directory
+#' @return List of graphs.
 #'
 #' @noRd
-make_images_list <- function(template_proc_list, template_dir, writer_indices) {
+make_images_list <- function(template_proc_list, main_dir, writer_indices) {
   tic <- Sys.time() # start timer
-
+  
   message("Processing the image (matrix) for each graph in template_proc_list...")
-
+  
   # For each graph, find the locations (column and row numbers) relative to the bottom left corner of the graph image.
   template_images_list <- NULL
   for (i in 1:length(template_proc_list))
@@ -339,7 +334,7 @@ make_images_list <- function(template_proc_list, template_dir, writer_indices) {
       centeredImage(x)
     }))
   }
-
+  
   # Add writer and docname to images list
   docname <- NULL
   for (i in 1:length(template_proc_list)) {
@@ -351,7 +346,7 @@ make_images_list <- function(template_proc_list, template_dir, writer_indices) {
     template_images_list[[i]]$docname <- docname[[i]]
     template_images_list[[i]]$writer <- substr(docname[[i]], start = writer_indices[1], stop = writer_indices[2])
   }
-
+  
   # For each graph, find the locations (column and row numbers) relative to centroid of the graph image.
   template_images_list <- lapply(template_images_list, function(x) {
     x$nodesrc <- cbind(((x$nodes - 1) %/% dim(x$image)[1]) + 1, dim(x$image)[1] - ((x$nodes - 1) %% dim(x$image)[1]))
@@ -364,81 +359,23 @@ make_images_list <- function(template_proc_list, template_dir, writer_indices) {
     })
     return(x)
   })
-
-  message("Saving list of images to template_dir > data > template_images_list.rds")
-  saveRDS(template_images_list, file.path(template_dir, "data", "template_images_list.rds"))
-
-  # Calculate processing time
-  toc <- Sys.time() # stop timer
-  elapsed <- paste0(round(as.numeric(difftime(time1 = toc, time2 = tic, units = "min")), 3), " minutes")
-  message(sprintf("Saved images list to template_dir > data > template_images_list.rds: %s", elapsed))
-
-  return(template_images_list)
-}
-
-
-#' Choose Graphs
-#'
-#' `chooseGraphs()` randomly selects `num_graphs` to use to create a new cluster
-#' template. If `num_graphs = 'All'` then all available training graphs will be
-#' used. If `num_graphs` is an positive integer `n` then `floor(num_graphs / n)`
-#' graphs are randomly selected from each template training document.
-#' 
-#' @param seed Integer seed for the random number generator when
-#'   selecting graphs. If `num_graphs = 'All'` then the seed won't be used
-#' @param num_graphs Number of graphs to use to create the cluster template.
-#'   `All` uses all available graphs. An integer uses a random sample of graphs.
-#' @param full_template_images_list A list of all available training graphs
-#'   created by `make_images_list`
-#' @return List of graphs. The list is saved as template_dir > data >
-#'   template_images_list.rds
-#'
-#' @noRd
-chooseGraphs <- function(seed, num_graphs, full_template_images_list) {
-  # bind global variable to fix check() note
-  docname <- NULL
   
-  set.seed(seed = seed)
-
-  # Choose how many graphs to use to create the template(s)
-  if (num_graphs == "All") {
-    message("Select all graphs...")
-    template_images_list <- full_template_images_list
-  } else {
-    message("Select a sample of graphs...")
-    num_graphs <- as.integer(num_graphs) # needed for shiny app
-    stratified_sample <- function(full_template_images_list, num_graphs) {
-      # randomly select (num_graphs / (# docs per writer * # writers) graphs from each document
-      df <- data.frame(
-        writer = sapply(full_template_images_list, function(x) x$writer),
-        docname = sapply(full_template_images_list, function(x) x$docname),
-        graph_num = 1:length(full_template_images_list)
-      )
-      D <- length(unique(df$docname))
-      df <- df %>%
-        dplyr::group_by(docname) %>%
-        dplyr::slice_sample(n = floor(num_graphs / D))
-      template_images_list <- full_template_images_list[df$graph_num]
-      return(template_images_list)
-    }
-    template_images_list <- stratified_sample(full_template_images_list, num_graphs)
-  }
   return(template_images_list)
 }
 
 
 #' Do Setup
 #'
-#' `do_setup()` creates the folder template_dir > starting_seed. It also creates
+#' `do_setup()` creates the folder main_dir > starting_seed. It also creates
 #' data and logs subfolders in the starting_seed folder.
 #'
-#' @param template_dir Input directory
+#' @param main_dir Input directory
 #'
 #' @noRd
-do_setup <- function(template_dir) {
-
-  # Create subfolder in template_dir if it doesn't already exist
-  make_dir(file.path(template_dir, "data"))
+do_setup <- function(main_dir) {
+  
+  # Create subfolder in main_dir if it doesn't already exist
+  make_dir(file.path(main_dir, "data"))
 }
 
 
@@ -478,7 +415,7 @@ chooseCenters <- function(seed, K, template_proc_list, template_images_list) {
   stratum <- stratumfac <- data <- n <- samp <- NULL
   
   set.seed(seed = seed)
-
+  
   # Make vectors of document #, letter #, and strata for each graph
   doc <- letter <- stratum_a <- c()
   for (i in 1:length(template_proc_list)) {
@@ -488,7 +425,7 @@ chooseCenters <- function(seed, K, template_proc_list, template_images_list) {
       stratum_a <- c(stratum_a, template_proc_list[[i]]$process$letterList[[j]]$characterFeatures$stratum)
     }
   }
-
+  
   lvls <- c("1loop", "2loop", sort(as.numeric(unique(stratum_a[!(stratum_a %in% c("1loop", "2loop"))]))))
   # Select graphs as starting cluster centers by randomly selecting 5 graphs with 1 loop, 2 graphs with 2 loops,
   # 5 graphs with 1 edge, 6 graphs with 2 edges, and so on. NOTE: numstrat must sum to # of
@@ -501,7 +438,7 @@ chooseCenters <- function(seed, K, template_proc_list, template_images_list) {
     # Drop trailing items in numstrat to make it the same length as lvls
     numstrat <- numstrat[1:length(lvls)]
   }
-
+  
   samplingdf <- data.frame(doc = doc, letter = letter, stratum = stratum_a, ind = 1:length(stratum_a))
   samplingdf <- samplingdf %>%
     dplyr::mutate(stratumfac = factor(stratum, levels = lvls)) %>%
@@ -513,13 +450,13 @@ chooseCenters <- function(seed, K, template_proc_list, template_images_list) {
     dplyr::mutate(samp = map2(data, n, dplyr::sample_n)) %>%
     dplyr::select(-data) %>%
     tidyr::unnest(samp)
-
+  
   # Reformat starting cluster centers as prototype graphs
   centerstarts <- replicate(K, list())
   for (k in 1:K) {
     centerstarts[[k]] <- letterToPrototype(template_images_list[[samplingdf$ind[k]]], numPathCuts = 8)
   }
-
+  
   return(centerstarts)
 }
 
@@ -550,22 +487,20 @@ PathToRC = function(pathList, dims)
 #' @param max_iters Maximum number of iterations to allow the K-means algorithm
 #'   to run
 #' @param gamma Parameter for outliers
-#' @param num_outliers Fixed value round(.25*length(full_template_images_list))
+#' @param num_outliers Fixed value round(.25*length(template_images_list))
 #' @param num_dist_cores Integer number of cores to use for the distance
 #'   calculations in the K-means algorithm. Each iteration of the K-means
 #'   algorithm calculates the distance between each input graph and each cluster
 #'   center.
 #' @param centers_seed Integer seed for the random number generator when
 #'   selecting starting cluster centers.
-#' @param graphs_seed Integer seed for the random number generator when
-#'   selecting graphs. If `num_graphs = 'All'` then `graphs_seed` won't be used
 #' @return Cluster template
 #'
 #' @noRd
 letterKmeansWithOutlier_parallel <- function(template_proc_list, template_images_list, K, centers, num_path_cuts, max_iters, gamma,
-                                             num_outliers, num_dist_cores, centers_seed, graphs_seed) {
+                                             num_outliers, num_dist_cores, centers_seed) {
   get("within_cluster_sum_of_squares")
-
+  
   # Initialize ----
   n <- length(template_images_list)
   oldCluster <- rep(0, n) # previous cluster assignment for each graph
@@ -577,26 +512,23 @@ letterKmeansWithOutlier_parallel <- function(template_proc_list, template_images
   centerMovedOld <- rep(TRUE, K) # whether each cluster lost or grained graphs on last iteration
   oldCenters <- centers
   changes <- c() # number of graphs that changed clusters on each iteration
-  db <- c() # Davies-Bouldin Index
-  vrc <- c() # Variance ratio criterion
   wcss <- c() # Within-cluster sum of squares
-  rmse <- c() # Root mean square error
-
+  
   # Initial settings for outliers
   current_outlierCutoff <- Inf
   outlierCutoff <- c() # save outlier cutoff on each iteration
   outliers <- NULL
   potentialOutliers <- NULL
-
+  
   ## ADDING PARALLEL
   doParallel::registerDoParallel(num_dist_cores)
   vecoflengthj <- rep(0, K)
-
+  
   while (TRUE) {
     # Cluster Assignment Step ----
     iters <- iters + 1
-    message(sprintf("Starting iteration %d of the k-means algorithm...", iters))
-
+    message(sprintf("\nStarting iteration %d of the k-means algorithm...", iters))
+    
     message("Calculating the distances between graphs and cluster centers...")
     # Calculate the distance between each graph and each cluster center. If the cluster center didn't change, the distances for that
     # cluster don't need to be recalculated
@@ -604,35 +536,35 @@ letterKmeansWithOutlier_parallel <- function(template_proc_list, template_images
       for (j in 1:K) # for each cluster j
       {
         if (centerMoved[j] | centerMovedOld[j]) # if cluster j's center changed
-          { # calculate the distance between graph i and cluster j
-            vecoflengthj[j] <- getGraphDistance(template_images_list[[i]], centers[[j]], isProto2 = TRUE, numPathCuts = num_path_cuts)$matching_weight
-          } else {
+        { # calculate the distance between graph i and cluster j
+          vecoflengthj[j] <- getGraphDistance(template_images_list[[i]], centers[[j]], isProto2 = TRUE, numPathCuts = num_path_cuts)$matching_weight
+        } else {
           vecoflengthj[j] <- dists[i, j]
         } # distance didn't change from last iteration
       }
       return(vecoflengthj)
     }
-
+    
     message("Assigning graphs to clusters...")
     # put distances between graphs and cluster centers in a matrix
     dists <- matrix(unlist(listoflengthi), nrow = length(template_images_list), ncol = K, byrow = TRUE)
-
+    
     # assign each graph to the closet cluster
     cluster <- apply(dists, 1, which.min)
-
+    
     # get the within-cluster distances
     current_wcd <- apply(dists, 1, min)
-
+    
     # find graphs that are further from their assigned cluster than current_outlierCutoff. NOTE: no outliers are assigned on the first iteration
     potentialOutliers <- which(current_wcd > current_outlierCutoff)
-
+    
     # Sort the potential outliers by distance from their respective cluster centers. If there are more potential outliers than num_outliers
     # only keep the outliers furthest from their clusters
     outliers <- potentialOutliers[rank(-1 * current_wcd[current_wcd > current_outlierCutoff]) < num_outliers]
-
+    
     # assign outliers to the outlier cluster
     cluster[outliers] <- -1
-
+    
     # If a cluster is empty or only has one graph, reassign that graph (if any) to the outlier cluster.
     # Then find the non-outlier graph that is furthest from its cluster center and reassign it to the
     # now empty cluster
@@ -642,14 +574,14 @@ letterKmeansWithOutlier_parallel <- function(template_proc_list, template_images
         cluster[cluster != -1][which.max(current_wcd[cluster != -1])] <- i
       }
     }
-
+    
     # Add current outlier cutoff to list
     outlierCutoff <- c(outlierCutoff, current_outlierCutoff)
-
+    
     # Calculate the new outlierCutoff as
     # gamma*(current_wcd of non-outlier clusters)/(total # graphs - # outliers)
     current_outlierCutoff <- gamma * sum(current_wcd[cluster > 0]) / (n - sum(cluster < 0))
-
+    
     # Recalculate the within cluster distances
     for (i in 1:n) {
       if (cluster[i] == -1) {
@@ -659,35 +591,20 @@ letterKmeansWithOutlier_parallel <- function(template_proc_list, template_images
       }
     }
     wcd[iters, ] <- current_wcd
-
+    
     # Record number and percent of graphs that changed clusters
     current_changes <- sum(cluster != oldCluster)
     changes <- c(changes, current_changes)
     current_perc_changes <- 100 * current_changes / n
-    message(sprintf("%d graphs changed clusters.", current_changes))
-    message(sprintf("%f percent of total graphs changed clusters.", current_perc_changes))
-
+    message(sprintf("%d graphs changed clusters...", current_changes))
+    message(sprintf("%f percent of total graphs changed clusters...", current_perc_changes))
+    
     # Performance Measures ----
     # Caclulate the Within-Cluster Sum of Squares
     current_wcss <- within_cluster_sum_of_squares(wcd = current_wcd, cluster = cluster)
     wcss <- c(wcss, current_wcss)
-    message(sprintf("The within-cluster sum of squares is %f.", current_wcss))
-
-    # Calculate the root mean square error
-    current_rmse <- root_mean_square_error(wcd = current_wcd, cluster = cluster)
-    rmse <- c(rmse, current_rmse)
-    message(sprintf("The root mean square error is %f.", current_rmse))
-
-    # Calculate the Davies-Bouldin Index
-    current_db <- davies_bouldin(wcd = current_wcd, cluster = cluster, centers = centers, K = K, num_path_cuts = num_path_cuts)
-    db <- c(db, current_db)
-    message(sprintf("The Davies-Bouldin Index is %f.", current_db))
-
-    # Calculate the variance ratio criterion
-    current_vrc <- variance_ratio_criterion(wcd = current_wcd, cluster = cluster, centers = centers, K = K, num_path_cuts = num_path_cuts)
-    vrc <- c(vrc, current_vrc)
-    message(sprintf("The variance ratio criterion is %f.", current_vrc))
-
+    message(sprintf("The within-cluster sum of squares is %f...", current_wcss))
+    
     # Check Stopping Criteria ----
     # Stop if the percent of graphs that changed clusters is <= 3%, if the
     # number of graphs that changed clusters has been constant for 3 consecutive
@@ -707,12 +624,12 @@ letterKmeansWithOutlier_parallel <- function(template_proc_list, template_images
       stop_reason <- "max iterations"
       break
     }
-
+    
     # Update Centers Step -------------------------------------------------------------
     message("Calculating new cluster centers...")
     # Record whether each graph changed clusters
     whichChanged <- !(oldCluster == cluster)
-
+    
     # For each cluster, record whether any of its graphs left or joined the cluster
     centerMovedOld <- centerMoved
     centerMoved <- rep(FALSE, K)
@@ -722,7 +639,7 @@ letterKmeansWithOutlier_parallel <- function(template_proc_list, template_images
         centerMoved[i] <- TRUE
       }
     }
-
+    
     # For each cluster, if the cluster changed graphs, calculate the new cluster center
     for (i in 1:K)
     {
@@ -730,17 +647,16 @@ letterKmeansWithOutlier_parallel <- function(template_proc_list, template_images
         centers[[i]] <- meanGraphSet_slowchange(template_images_list[cluster == i][order(current_wcd[cluster == i])], num_path_cuts = num_path_cuts,num_dist_cores=num_dist_cores) # meanGraphSet_Kmeans(template_images_list[cluster == i], num_path_cuts=num_path_cuts)
       }
     }
-
+    
     # store current cluster assignments
     oldCluster <- cluster
   }
   # list docs and writers
   docnames <- sapply(template_images_list, function(x) x$docname)
   writers <- sapply(template_images_list, function(x) x$writer)
-
+  
   return(list(
     centers_seed = centers_seed,
-    graphs_seed = graphs_seed,
     template_graphs = template_images_list,
     cluster = cluster, 
     centers = centers, 
@@ -753,10 +669,7 @@ letterKmeansWithOutlier_parallel <- function(template_proc_list, template_images
     outlierCutoff = outlierCutoff,
     stop_reason = stop_reason, 
     wcd = wcd, 
-    wcss = wcss, 
-    rmse = rmse, 
-    DaviesBouldinIndex = db, 
-    VarianceRatioCriterion = vrc
+    wcss = wcss
   ))
 }
 
@@ -772,17 +685,17 @@ letterKmeansWithOutlier_parallel <- function(template_proc_list, template_images
 #' @return The input graph closest to the mean graph
 #'
 #' @noRd
-meanGraphSet_slowchange <- function(template_images_list, num_path_cuts = 4,num_dist_cores) {
+meanGraphSet_slowchange <- function(template_images_list, num_path_cuts, num_dist_cores) {
   # indices=sample.int(length(template_images_list)) # adds graphs to mean calculations in a random order
   indices <- 1:length(template_images_list) # adds graphs in order
   if (length(template_images_list) < 1) stop("Please specify more than 0 graphs to mean.")
-
+  
   # initialize
   dists <- rep(0, length(template_images_list))
-
+  
   # convert the first graph in the list to a prototype
   meanGraph1 <- letterToPrototype(template_images_list[[indices[1]]], numPathCuts = num_path_cuts)
-
+  
   # add graphs one-by-one to the mean graph calculation
   if (length(template_images_list) > 1) {
     for (i in 2:length(template_images_list))
@@ -790,7 +703,7 @@ meanGraphSet_slowchange <- function(template_images_list, num_path_cuts = 4,num_
       meanGraph1 <- weightedMeanGraphs(template_images_list[[indices[i]]], meanGraph1, 1 / i, isProto2 = TRUE, numPathCuts = num_path_cuts)
     }
   }
-
+  
   # calculate the distance between the new mean graph and each graph in the cluster
   # for (i in 1:length(template_images_list))
   # {
@@ -800,14 +713,14 @@ meanGraphSet_slowchange <- function(template_images_list, num_path_cuts = 4,num_
   dists <- foreach::foreach(i = 1:length(template_images_list), .export = c("getGraphDistance"), .packages = c("lpSolve"),.combine='c') %dopar% {
     return(getGraphDistance(meanGraph1, template_images_list[[i]], isProto1 = TRUE, numPathCuts = num_path_cuts)$matching_weight)
   }
-
+  
   # find the index of the graph that is closest to the mean graph
   if (dists[1] >= stats::quantile(dists, 0)) {
     retindex <- which.min(dists)
   } else {
     retindex <- 1
   }
-
+  
   # return the graph closest to the mean graph as a protoype
   return(letterToPrototype(template_images_list[[retindex]], numPathCuts = num_path_cuts))
 }
@@ -827,137 +740,36 @@ meanGraphSet_slowchange <- function(template_images_list, num_path_cuts = 4,num_
 #' @return The cluster center closest to the overall mean graph
 #'
 #' @noRd
-overall_meanGraph <- function(centers, num_path_cuts = 8) {
+overall_meanGraph <- function(centers, num_path_cuts) {
   indices <- 1:length(centers) # adds graphs in order
   if (length(centers) < 1) stop("Please specify more than 0 graphs to mean.")
-
+  
   # initialize
   dists <- rep(0, length(centers))
   meanGraph1 <- centers[[1]]
-
+  
   # add centers one-by-one to the mean graph calculation
   if (length(centers) > 1) {
     for (i in 2:length(centers)) {
       meanGraph1 <- weightedMeanGraphs(centers[[indices[i]]], meanGraph1, 1 / i, isProto1 = TRUE, isProto2 = TRUE, numPathCuts = num_path_cuts)
     }
   }
-
+  
   # calculate the distance between the new mean graph and each center
   for (i in 1:length(centers))
   {
     dists[i] <- getGraphDistance(meanGraph1, centers[[i]], isProto1 = TRUE, isProto2 = TRUE, numPathCuts = num_path_cuts)$matching_weight
   }
-
+  
   # find the index of the graph that is closest to the mean graph
   if (dists[1] >= stats::quantile(dists, 0)) {
     retindex <- which.min(dists)
   } else {
     retindex <- 1
   }
-
+  
   return(list("overall_center_dists" = dists, overall_center = centers[[retindex]]))
 }
-
-
-#' Davies Bouldin Index
-#'
-#' davies_bouldin() calculates the Davies-Bouldin Index for the current
-#' iteration of the K-means algorithm
-#'
-#' @param wcd Matrix of within-cluster distances: the distances between each
-#'   graph and each cluster center
-#' @param cluster Vector of the cluster assignment for each graph
-#' @param centers List of cluster centers
-#' @param K Integer number of clusters
-#' @param num_path_cuts Integer number of sections to cut each graph into for
-#'   shape comparison
-#' @return The Davies-Bouldin Index
-#'
-#' @noRd
-davies_bouldin <- function(wcd, cluster, centers, K, num_path_cuts) {
-  # For each cluster, calculate the average distance between the graphs in that cluster and the cluster center
-  s <- rep(0, K)
-  for (i in 1:K) {
-    s[i] <- mean(wcd[cluster == i])
-  }
-
-  # Calculate the distance between each pair of cluster centers. We don't need to calculate the distance between a center and itself, so skip those calculations.
-  d <- matrix(NA, nrow = K, ncol = K)
-  for (i in 1:K) {
-    for (j in 1:K) {
-      if (i != j) {
-        d[i, j] <- getGraphDistance(centers[[i]], centers[[j]], isProto1 = TRUE, isProto2 = TRUE, numPathCuts = num_path_cuts)$matching_weight
-      }
-    }
-  }
-
-  # Calculate R_ij for all i and j. Again, we don't need to measure the separation between a cluster and itself, so skip those calculations
-  R <- matrix(NA, nrow = K, ncol = K)
-  for (i in 1:K) {
-    for (j in 1:K) {
-      if (i != j) {
-        R[i, j] <- (s[i] + s[j]) / d[i, j]
-      }
-    }
-  }
-
-  # Make list of clusters that have at least 1 graph
-  filled_clusters <- unique(cluster[cluster != -1])
-
-  # Find the max value of R for each filled cluster i
-  maxR <- rep(NA, length(filled_clusters))
-  for (i in 1:length(filled_clusters)) {
-    maxR[i] <- max(R[filled_clusters[i], ], na.rm = TRUE)
-  }
-
-  # Calculate the index
-  db <- sum(maxR) / length(filled_clusters)
-
-  return(db)
-}
-
-
-#' Variance Ratio Criterion
-#'
-#' `variance_ratio_criterion()` calculates the varience-ratio criterion for the
-#' current iteration of the K-means algorithm
-#'
-#' @param wcd Matrix of within-cluster distances: the distances between each
-#'   graph and each cluster center
-#' @param cluster Vector of the cluster assignment for each graph
-#' @param centers List of cluster centers
-#' @param K Integer number of clusters
-#' @param num_path_cuts Integer number of sections to cut each graph into for
-#'   shape comparison
-#' @return The variance-ratio criterion
-#'
-#' @noRd
-variance_ratio_criterion <- function(wcd, cluster, centers, K, num_path_cuts) {
-  # Count the number of graphs in each non-outlier cluster
-  ni <- c()
-  for (i in 1:K) {
-    ni <- c(ni, sum(cluster == i))
-  }
-
-  # Get total number of non-outlier graphs
-  n <- sum(ni)
-
-  # Estimate the overall mean graph (the center of the centers) and measure distance from all centers to
-  # the overall center
-  overall <- overall_meanGraph(centers = centers, num_path_cuts = num_path_cuts)
-
-  # Calculate the between-cluster variance: SS_B = (k-1)^(-1) \sum_{i=1}^k n_i \cdot d(m_i, m)^2
-  SSb <- sum(ni * overall$overall_center_dists^2) / (K - 1)
-
-  # Calculate the within-cluster variance: SS_W = (n-k)^(-1)\sum_{i=1}^k \sum_{x \in C_i} d(x, m_i)^2
-  wcd <- wcd[cluster != -1] # remove graphs in the outlier cluster
-  SSw <- sum(wcd^2) / (n - K)
-
-  # Calculate variance-ratio-criterion
-  vrc <- SSb / SSw
-  return(vrc)
-}
-
 
 #' Within Cluster Sum of Squares
 #'
@@ -973,13 +785,12 @@ variance_ratio_criterion <- function(wcd, cluster, centers, K, num_path_cuts) {
 within_cluster_sum_of_squares <- function(wcd, cluster) {
   # Get within cluster distances of non-outlier clusters
   wcd <- wcd[cluster != -1]
-
+  
   # Calculate within-cluster sum of squares
   wcss <- sum(wcd^2)
-
+  
   return(wcss)
 }
-
 
 #' Root Mean Square Error
 #'
@@ -995,15 +806,62 @@ within_cluster_sum_of_squares <- function(wcd, cluster) {
 root_mean_square_error <- function(wcd, cluster) {
   # Get within cluster distances of non-outlier clusters
   wcd <- wcd[cluster != -1]
-
+  
   # Get number of non-outlier graphs
   n <- length(wcd)
-
+  
   # Calculate within-cluster sum of squares
   wcss <- sum(wcd^2)
-
+  
   # Calculate the root means square error
   rmse <- sqrt(wcss / n)
-
+  
   return(rmse)
+}
+
+#' loop_extract
+#'
+#' Iterates through all available paths from processHandwriting()
+#' Picks out loops for later character association.
+#' 
+#' @param allPaths All character (formerly letter) paths from processHandwriting()
+#' 
+#' @return List of loops
+#' 
+#' @noRd
+loop_extract <- function(allPaths){
+  loops = list()
+  for(i in 1:length(allPaths)){
+    if(length(allPaths)<1){
+      next
+    }
+    if(allPaths[[i]][[1]]==allPaths[[i]][[length(allPaths[[i]])]]){
+      loops = c(loops,list(allPaths[[i]]))
+    }
+  }
+  return(loops)
+}
+
+#' centeredImage
+#'
+#' Find the letter's centroid and proptroid relative to the bottom left corner of the
+#' letter's image.
+#'
+#' @param letter A letter
+#' @return a named list with fields nodes, centroid, proptroid, image and allPaths
+#'
+#' @noRd
+centeredImage = function(letter)
+{
+  res = list()
+  res$nodes = letter$nodes
+  # Find the location (column and row numbers) of the centroid relative
+  # to the bottom left of the lettter image. Like (x,y) coordinates with 
+  # (0,0) in the bottom left corner of the image.
+  res$centroid = round(c(letter$characterFeatures$centroid_x, letter$characterFeatures$height - letter$characterFeatures$centroid_y + 1))
+  # Calculate the proptroid
+  res$proptroid = c(letter$characterFeatures$centroid_x, letter$characterFeatures$height - letter$characterFeatures$centroid_y + 1)/c(letter$characterFeatures$width, letter$characterFeatures$height)
+  res$image = letter$image
+  res$allPaths = letter$allPaths
+  return(res)
 }

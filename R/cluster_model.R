@@ -21,12 +21,12 @@
 #' Fit Model
 #'
 #' `fit_model()` fits a Bayesian hierarchical model to the model training data
-#' in `model_images_dir` and draws samples from the model as Markov Chain Monte
+#' in `model_docs` and draws samples from the model as Markov Chain Monte
 #' Carlo (MCMC) estimates.
 #'
-#' @param template_dir A directory that contains a cluster template created by
-#'   [`make_clustering_templates()`]
-#' @param model_images_dir A directory containing model training documents
+#' @param main_dir A directory that contains a cluster template created by
+#'   [`make_clustering_template()`]
+#' @param model_docs A directory containing model training documents
 #' @param num_iters An integer number of iterations of MCMC.
 #' @param num_chains An integer number of chains to use.
 #' @param num_cores An integer number of cores to use for parallel processing
@@ -54,17 +54,17 @@
 #'
 #' @examples
 #' \dontrun{
-#' template_dir <- "/path/to/template_directory"
-#' model_images_dir <- system.file("extdata/example_images/model_training_images",
+#' main_dir <- "/path/to/main_dir"
+#' model_docs <- system.file("extdata/example_images/model_training_images",
 #'   package = "handwriter"
 #' )
-#' questioned_images_dir <- system.file("extdata/example_images/questioned_images",
+#' questioned_docs <- system.file("extdata/example_images/questioned_images",
 #'   package = "handwriter"
 #' )
 #'
 #' model <- fit_model(
-#'   template_dir = template_dir,
-#'   model_images_dir = model_images_dir,
+#'   main_dir = main_dir,
+#'   model_docs = model_docs,
 #'   num_iters = 100,
 #'   num_chains = 1,
 #'   num_cores = 2,
@@ -75,8 +75,8 @@
 #' model <- drop_burnin(model = model, burn_in = 25)
 #'
 #' analysis <- analyze_questioned_documents(
-#'   template_dir = template_dir,
-#'   questioned_images_dir = questioned_images_dir,
+#'   main_dir = main_dir,
+#'   questioned_docs = questioned_docs,
 #'   model = model,
 #'   num_cores = 2
 #' )
@@ -85,8 +85,8 @@
 #'
 #' @export
 #' @md
-fit_model <- function(template_dir,
-                      model_images_dir,
+fit_model <- function(main_dir,
+                      model_docs,
                       num_iters,
                       num_chains = 1,
                       num_cores,
@@ -97,19 +97,18 @@ fit_model <- function(template_dir,
                       c = 2,
                       d = 2,
                       e = 0.5) {
-  # process model training documents and save in template_dir > data > model_graphs
+  # process model training documents and save in main_dir > data > model_graphs
   message("Processing model documents...")
   process_batch_dir(
-    input_dir = model_images_dir,
-    output_dir = file.path(template_dir, "data", "model_graphs")
+    input_dir = model_docs,
+    output_dir = file.path(main_dir, "data", "model_graphs")
   )
 
   # get cluster assignments
   message("Getting cluster assignments for model documents...")
   model_clusters <- get_clusterassignment(
-    template_dir = template_dir,
+    main_dir = main_dir,
     input_type = "model",
-    num_graphs = "All",
     writer_indices = writer_indices,
     doc_indices = doc_indices,
     num_cores = num_cores
@@ -187,7 +186,7 @@ fit_model <- function(template_dir,
     "graph_measurements" = model_data$graph_measurements,
     "cluster_fill_counts" = model_data$cluster_fill_counts
   )
-  saveRDS(model, file.path(template_dir, "data", "model.rds"))
+  saveRDS(model, file.path(main_dir, "data", "model.rds"))
 
   return(model)
 }
@@ -202,8 +201,8 @@ fit_model <- function(template_dir,
 #' @return A list of data frames of MCMC draws with burn-in dropped.
 #'
 #' @examples
-#' model <- drop_burnin(model = example_model_1chain, burn_in = 25)
-#' plot_trace(variable = "mu[1,2]", model = example_model_1chain)
+#' model <- drop_burnin(model = example_model, burn_in = 25)
+#' plot_trace(variable = "mu[1,2]", model = example_model)
 #'
 #' @export
 #' @md
@@ -227,7 +226,7 @@ drop_burnin <- function(model, burn_in) {
 #' @examples
 #' about_variable(
 #'   variable = "mu[1,2]",
-#'   model = example_model_1chain
+#'   model = example_model
 #' )
 #'
 #' @export
@@ -292,8 +291,8 @@ about_variable <- function(variable, model) {
 #' @return A list of data frames. Each data frame lists the credible intervals for a single writer.
 #'
 #' @examples
-#' get_credible_intervals(model=example_model_1chain)
-#' get_credible_intervals(model=example_model_1chain, interval_min=0.05, interval_max=0.95)
+#' get_credible_intervals(model=example_model)
+#' get_credible_intervals(model=example_model, interval_min=0.05, interval_max=0.95)
 #'
 #' @export
 #' @md

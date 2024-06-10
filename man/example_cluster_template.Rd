@@ -6,7 +6,7 @@
 \title{Example cluster template}
 \format{
 A list containing a single cluster template created by
-\code{\link[=make_clustering_templates]{make_clustering_templates()}}. The cluster template was created by
+\code{\link[=make_clustering_template]{make_clustering_template()}}. The cluster template was created by
 sorting a random sample of 1000 graphs from 10 training documents into 10
 clusters with a K-means algorithm. The cluster template is a named list
 with 16 items:
@@ -34,13 +34,7 @@ distances on each iteration of the K-means algorithm. More specifically,
 the distance between each graph and the center of the cluster to which it
 was assigned  on each iteration.}
 \item{wcss}{A vector of the
-within-cluster sum of squares on each iteration of the K-means algorithm.}
-\item{rmse}{A vector of the root-mean square error on each iteration of the
-K-means algorithm.}
-\item{DaviesBouldinIndex}{The Davies-Bouldin index on
-each iteration of the K-means algorithm.}
-\item{VarianceRatioCriterion}{The
-variance-ratio criterion on each iteration of the K-means algorithm.} }
+within-cluster sum of squares on each iteration of the K-means algorithm.}}
 }
 \usage{
 example_cluster_template
