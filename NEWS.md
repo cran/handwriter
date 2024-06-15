@@ -1,3 +1,10 @@
+# handwriter 3.1.1
+
+## Patches
+
+* The functions `fit_model()` and `analyze_questioned_documents()` now allow writer IDs that contain numbers and letters.
+
+
 # handwriter 3.1.0
 
 ## Minor improvements and fixes
