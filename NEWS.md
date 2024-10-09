@@ -1,3 +1,23 @@
+# handwriter 3.2.0
+
+## New features
+
+* The new function `plot_cluster_centers()` creates a plot of the clusters centers from a cluster template. The cluster centers are displayed as orange shapes. The function also plots all graphs in each cluster as grey shapes with 5% transparency to depict the variability of graph shapes within each cluster.
+
+* The new function `plotGraphs()` plots every graph in a document processed with `processDocument()`.
+
+## Minor improvements and fixes
+
+* Fixed bug in `processDocument()` when the writing in the document is a single connected component, such as a single word written in cursive. Previously, the output of `processDocument()` for this kind of document was formatted incorrectly.
+
+* Fixed bug in `get_credible_intervals()` and `plot_credible_intervals()` where the model writers were numbered sequentially. Now these functions use the writer IDs.
+
+* Fixed bug in `format_template_data()` where the function coerced writer IDs to integers even if the writer IDs contained characters.
+
+* Fixed bug in `get_clusters_batch()` where the function would stall but not return an error message if a document had a graph with a large number of edges (paths). Now the function ignores graphs with more than 30 edges.
+
+* Fixed bug in `fit_model()` where the function saves the same data in two separate files: "model_clusters.rds" and "all_clusters.rds". The argument 'save_master_file' was added to `get_clusters_batch()`. If TRUE, a data frame of all cluster assignments, "all_clusters.rds", will be saved. The default is FALSE.
+
 # handwriter 3.1.1
 
 ## Patches

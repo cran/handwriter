@@ -49,11 +49,16 @@ processDocument <- function(path) {
   # load image as matrix
   doc$image <- readPNGBinary(path) 
   # load writing as 1-column matrix of index locations of black pixels
-  doc$thin <- thinImage(doc$image)  
+  doc$thin <- thinImage(doc$image)
   doc$process <- processHandwriting(doc$thin, dim(doc$image))
   doc$docname <- basename(path)
   doc$docname <- stringr::str_replace(doc$docname, ".png", "")
   doc$docname <- stringr::str_replace(doc$docname, ".PNG", "")
+  
+  if (!length(doc$process$letterList)){
+    stop("The document does not contain any graphs.")
+  }
+  
   return(doc)
 }
 
@@ -146,7 +151,7 @@ processHandwriting <- function(img, dims) {
   nodeConnections <- unique(unlist(sapply(comps, function(x) x[['nodes']][['nodeConnections']])))
   terminalNodes <- unique(unlist(sapply(comps, function(x) x[['nodes']][['terminalNodes']])))
   breakPoints <- unique(unlist(sapply(comps, function(x) x[['nodes']][['breakPoints']])))
-  graphList <- flattenList(sapply(comps, function(x) x[['paths']][['graphList']]))
+  graphList <- flattenList(comps)
   
   # Document processing complete ----
   message("Document processing complete")

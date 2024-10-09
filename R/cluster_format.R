@@ -45,10 +45,6 @@ format_template_data <- function(template) {
     dplyr::group_by(writer, doc, cluster) %>%
     dplyr::summarize(count = dplyr::n())
 
-  # make integer
-  counts <- counts %>%
-    dplyr::mutate(writer = as.integer(writer))
-
   # make a column for each cluster
   counts <- counts %>%
     tidyr::pivot_wider(names_from = cluster, values_from = count, values_fill = 0)
@@ -135,9 +131,9 @@ format_model_data <- function(model_clusters, writer_indices, doc_indices, a = 2
   
   # if clusters aren't numbered sequentially, relabel them
   if (length(unique(graph_measurements$cluster)) < max(graph_measurements$cluster)) {
-    graph_measurements <- graph_measurements %>% dplyr::rename("old_cluster" = cluster)
-    cluster_lookup <- data.frame("old_cluster" = sort(unique(graph_measurements$old_cluster)), "cluster" = 1:length(unique(graph_measurements$old_cluster)))
-    graph_measurements <- graph_measurements %>% dplyr::left_join(cluster_lookup, by = "old_cluster")
+    graph_measurements <- graph_measurements %>% dplyr::rename("original_cluster" = cluster)
+    cluster_lookup <- data.frame("original_cluster" = sort(unique(graph_measurements$original_cluster)), "cluster" = 1:length(unique(graph_measurements$original_cluster)))
+    graph_measurements <- graph_measurements %>% dplyr::left_join(cluster_lookup, by = "original_cluster")
   }
 
   # get cluster fill counts ----
@@ -190,22 +186,27 @@ format_model_data <- function(model_clusters, writer_indices, doc_indices, a = 2
 #' @noRd
 format_questioned_data <- function(model, questioned_clusters, writer_indices, doc_indices) {
   # bind global variable to fix check() note
-  old_cluster <- cluster <- NULL
+  original_cluster <- cluster <- NULL
   
   graph_measurements <- questioned_clusters
 
   # if model clusters were relabeled, relabel the questioned clusters
-  if (any(names(model$graph_measurements) == "old_cluster")) {
+  if (any(names(model$graph_measurements) == "original_cluster")) {
     # make lookup table from model cluster data
     cluster_lookup <- model$graph_measurements %>%
-      dplyr::select(old_cluster, cluster) %>%
+      dplyr::select(original_cluster, cluster) %>%
       dplyr::distinct()
     # store clusters as old clusters
     graph_measurements <- graph_measurements %>%
-      dplyr::rename("old_cluster" = cluster)
-    # get new cluster labels
+      dplyr::rename("original_cluster" = cluster)
+    # get new cluster labels. NOTE: adds NA if questioned doc(s) use
+    # clusters that model doc(s) did not
     graph_measurements <- graph_measurements %>%
-      dplyr::left_join(cluster_lookup, by = "old_cluster")
+      dplyr::left_join(cluster_lookup, by = "original_cluster")
+    # return error if NAs exist in cluster
+    if (any(is.na(graph_measurements$cluster))) {
+      stop("graph_measurements$cluster has at least one NA")
+    }
   }
 
   # get cluster fill counts ----

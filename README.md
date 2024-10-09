@@ -1,26 +1,57 @@
-
-<!-- README.md is generated from README.Rmd. Please edit that file -->
-
 # handwriter
+
 
 <!-- badges: start -->
 <!-- badges: end -->
 
-The handwriter package performs writership analysis of a handwritten
-*questioned document* where the questioned document was written by one
-of *closed-set* of potential writers. For example, a handwritten bomb
-threat is found in a science classroom, and the police are able to
-determine that the note could only have been written by one of the
-students in 4th period science. The handwriter package builds a
-statistical model to estimate a *writer profile* from known handwriting
-samples from each writer in the closed-set. A writer profile is also
-estimated from the questioned document. The statistical model compares
-the writer profile from the questioned document with each of the writer
-profiles from the closed-set of potential writers and estimates the
-posterior probability that each closed-set writer wrote the questioned
-document.
+Handwriter is designed to assist forensic examiners by analyzing
+handwritten documents against a *closed set* of potential writers. It
+determines the probability that each writer wrote the document. Whether
+you are a forensic document examiner, legal professional, academic, or
+simply curious about how statistics are applied to handwriting,
+handwriter provides an automated way to evaluate handwriting samples.
 
-## Installation
+# Quick Start
+
+## VIEW A DEMO
+
+View a demo of handwriter on handwritten documents from the CSAFE
+Handwriting Database. Go to
+[demo](https://csafe.shinyapps.io/handwriterAppDemo/).
+
+## SIMULATE CASEWORK WITH EXAMPLE DOCUMENTS
+
+### INSTALLATION
+
+Handwriter requires R, RStudio IDE, and JAGS.
+
+-   Install R and RStudio from
+    [POSIT](https://posit.co/download/rstudio-desktop/)
+-   Install JAGS from
+    [SourceForge](https://sourceforge.net/projects/mcmc-jags/files/)
+
+### LAUNCH THE APP
+
+Open RStudio, navigate to the console window. Install the handwriterApp
+package. You only need to do this once.
+
+``` r
+install.packages("handwriterApp")
+```
+
+Every time you want to use the app, type:
+
+``` r
+library(handwriterApp)
+handwriterApp()
+```
+
+In the pop-up window, click **Open in Browser**. If you use the app in
+the pop-up window instead of in a browser, some links will not work.
+
+Click **Simulate Casework** and follow the instructions in the app.
+
+# Advanced
 
 You can install handwriter from CRAN with:
 
@@ -56,7 +87,7 @@ Use `processDocument()` to
 library(handwriter)
 phrase <- system.file("extdata", "phrase_example.png", package = "handwriter")
 doc <- processDocument(phrase)
-#> path in readPNGBinary: /private/var/folders/1z/jk9bqhdd06j1fxx0_xm2jj980000gn/T/RtmplsdN6z/temp_libpath947954bb6036/handwriter/extdata/phrase_example.png
+#> path in readPNGBinary: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/handwriter/extdata/phrase_example.png
 #> Starting Processing...
 #> Getting Nodes...
 #> Skeletonizing writing...
@@ -76,7 +107,7 @@ We can view the image:
 plotImage(doc)
 ```
 
-<img src="man/figures/README-image-1.png" width="100%" />
+<img src="man/figures/README-image-1.png" style="width:100.0%" />
 
 We can view the thinned image:
 
@@ -84,7 +115,7 @@ We can view the thinned image:
 plotImageThinned(doc)
 ```
 
-<img src="man/figures/README-thin-1.png" width="100%" />
+<img src="man/figures/README-thin-1.png" style="width:100.0%" />
 
 We can also view the nodes:
 
@@ -92,7 +123,7 @@ We can also view the nodes:
 plotNodes(doc)
 ```
 
-<img src="man/figures/README-nodes-1.png" width="100%" />
+<img src="man/figures/README-nodes-1.png" style="width:100.0%" />
 
 ## Perform Writership Analysis
 
@@ -194,7 +225,8 @@ template_data <- format_template_data(template = template)
 plot_cluster_fill_counts(template_data, facet = TRUE)
 ```
 
-<img src="man/figures/README-unnamed-chunk-4-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-6-1.png"
+style="width:100.0%" />
 
 ### STEP 3: Fit a Hierarchical Model
 
@@ -258,9 +290,11 @@ but the model data is already in the correct format.)
 plot_cluster_fill_counts(formatted_data=model, facet = TRUE)
 ```
 
-<img src="man/figures/README-unnamed-chunk-7-1.png" width="100%" /> The
-bars across the top of each graph show the Writer ID. Each graph has a
-line for each known handwriting sample from a given writer.
+<img src="man/figures/README-unnamed-chunk-9-1.png"
+style="width:100.0%" />
+
+The bars across the top of each graph show the Writer ID. Each graph has
+a line for each known handwriting sample from a given writer.
 
 #### Hierarchical Model Variables and Burn-in
 
@@ -297,7 +331,8 @@ View a trace plot of a variable.
 plot_trace(variable = "mu[1,1]", model = model)
 ```
 
-<img src="man/figures/README-unnamed-chunk-10-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-12-1.png"
+style="width:100.0%" />
 
 If we need to, we can drop the beginning MCMC iterations for burn-in.
 For example, if we want to drop the first 25 iterations, we use
@@ -368,7 +403,8 @@ the cluster fill counts observed in each questioned document.
 plot_cluster_fill_counts(analysis, facet = TRUE)
 ```
 
-<img src="man/figures/README-unnamed-chunk-15-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-17-1.png"
+style="width:100.0%" />
 
 View the posterior probabilities of writership.
 

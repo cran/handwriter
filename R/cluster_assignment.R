@@ -18,29 +18,35 @@
 #' get_clusters_batch
 #'
 #' @param template A cluster template created with [`make_clustering_template`]
-#' @param input_dir A directory containing graphs created with [`process_batch_dir`]
+#' @param input_dir A directory containing graphs created with
+#'   [`process_batch_dir`]
 #' @param output_dir Output directory for cluster assignments
 #' @param writer_indices Vector of start and end indices for the writer id in
 #'   the graph file names
 #' @param doc_indices Vector of start and end indices for the document id in the
 #'   graph file names
 #' @param num_cores Integer number of cores to use for parallel processing
+#' @param save_master_file TRUE or FALSE. If TRUE, a master file named
+#'   'all_clusters.rds' containing the cluster assignments for all documents in
+#'   the input directory will be saved to the output directory. If FASLE, a
+#'   master file will not be saved, but the individual files for each document
+#'   in the input directory will still be saved to the output directory.
 #'
 #' @return A list of cluster assignments
-#' 
+#'
 #' @examples
 #' \dontrun{
 #' template <- readRDS('path/to/template.rds')
 #' get_clusters_batch(template=template, input_dir='path/to/dir', output_dir='path/to/dir',
 #' writer_indices=c(2,5), doc_indices=c(7,18), num_cores=1)
-#' 
+#'
 #' get_clusters_batch(template=template, input_dir='path/to/dir', output_dir='path/to/dir',
 #' writer_indices=c(1,4), doc_indices=c(5,10), num_cores=5)
 #' }
-#' 
+#'
 #' @export
 #' @md
-get_clusters_batch <- function(template, input_dir, output_dir, writer_indices, doc_indices, num_cores = 1) {
+get_clusters_batch <- function(template, input_dir, output_dir, writer_indices, doc_indices, num_cores = 1, save_master_file = FALSE) {
   # bind global variables to fix check() note
   i <- outliercut <- docname <- NULL
 
@@ -55,7 +61,6 @@ get_clusters_batch <- function(template, input_dir, output_dir, writer_indices, 
     stop("num_cores is not greater than or equal to 1")
   }
 
-  message("Starting cluster assginment...")
   # make output directory
   if (!dir.exists(output_dir)) {
     dir.create(output_dir, recursive = TRUE)
@@ -71,26 +76,34 @@ get_clusters_batch <- function(template, input_dir, output_dir, writer_indices, 
     proclist <- foreach::foreach(
       i = 1:length(proclist),
       .combine = "rbind",
-      .export = c("AddLetterImages", "MakeLetterListLetterSpecific", "centeredImage", "makeassignment", "angle")
+      .export = c(
+        "AddLetterImages",
+        "angle",
+        "centeredImage",
+        "delete_graphs",
+        "list_images",
+        "make_clusters_df",
+        "makeassignment",
+        "MakeLetterListLetterSpecific",
+        "move_problem_file")
     ) %dopar% { # for each document i
 
-      message(paste("     Loading graphs for", basename(proclist[i])))
       doc <- readRDS(proclist[i])
 
       # check that doc$docname is not blank
       if (!("docname" %in% names(doc))) {
-        if (!dir.exists(file.path(output_dir, "problem_files"))) {
-          dir.create(file.path(output_dir, "problem_files"))
-        }
-        file.copy(proclist[i], file.path(output_dir, "problem_files", basename(proclist[i])))
-        message(paste("docname is NULL for", proclist[i], "\n"))
+        move_problem_file(path = proclist[i], output_dir = output_dir)
+        return()
+      }
+      
+      # return warning if document doesn't contain any graphs (E.g. document is blank)
+      if (!length(doc$process$letterList)){
         return()
       }
 
       # load outfile if it already exists
       outfile <- file.path(output_dir, paste0(stringr::str_replace(doc$docname, ".png", ""), ".rds"))
       if (file.exists(outfile)) {
-        message(paste("     Cluster assignments already exist for", doc$docname, "\n"))
         df <- readRDS(outfile)
         return(df)
       }
@@ -98,54 +111,19 @@ get_clusters_batch <- function(template, input_dir, output_dir, writer_indices, 
       # extra processing
       doc$process$letterList <- AddLetterImages(doc$process$letterList, dim(doc$image))
       doc$process$letterList <- MakeLetterListLetterSpecific(doc$process$letterList, dim(doc$image)) ### THIS SCREWS UP PLOTLETTER AND OTHER PLOTTING!!!
-
-      imagesList <- list()
-      imagesList <- c(imagesList, lapply(doc$process$letterList, function(x) {
-        centeredImage(x)
-      }))
-      imagesList <- lapply(imagesList, function(x) {
-        x$nodesrc <- cbind(((x$nodes - 1) %/% dim(x$image)[1]) + 1, dim(x$image)[1] - ((x$nodes - 1) %% dim(x$image)[1]))
-        x$nodesrc <- x$nodesrc - matrix(rep(x$centroid, each = dim(x$nodesrc)[1]), ncol = 2)
-        x$pathEndsrc <- lapply(x$allPaths, function(z) {
-          cbind(((z[c(1, length(z))] - 1) %/% dim(x$image)[1]) + 1, dim(x$image)[1] - ((z[c(1, length(z))] - 1) %% dim(x$image)[1]))
-        })
-        x$pathEndsrc <- lapply(x$pathEndsrc, function(z) {
-          z - matrix(rep(x$centroid, each = 2), ncol = 2)
-        })
-        return(x)
-      })
+    
+      # delete graphs that have more than 30 paths
+      doc <- delete_graphs(doc = doc, max_edges = 30)
+      
+      imagesList <- list_images(doc)
 
       # get cluster assignments
-      message(paste("     Getting cluster assignments for", doc$docname))
       cluster_assign <- sapply(imagesList, makeassignment, templateCenterList = template$centers, outliercut = outliercut)
-      df <- data.frame(cluster = cluster_assign)
-
-      # add docname, writer, doc, slope, xvar, yvar, and covar
-      df$docname <- doc$docname
-      df$writer <- sapply(df$docname, function(x) substr(x, start = writer_indices[1], stop = writer_indices[2]))
-      df$doc <- sapply(df$docname, function(x) substr(x, start = doc_indices[1], stop = doc_indices[2]), USE.NAMES = FALSE)
-      df$slope <- sapply(doc$process$letterList, function(x) x$characterFeatures$slope)
-      df$xvar <- sapply(doc$process$letterList, function(x) x$characterFeatures$xvar)
-      df$yvar <- sapply(doc$process$letterList, function(x) x$characterFeatures$yvar)
-      df$covar <- sapply(doc$process$letterList, function(x) x$characterFeatures$covar)
-
-      # calculate pc rotation angle and wrapped pc rotation angle
-      get_pc_rotation <- function(x) {
-        xv <- as.numeric(x["xvar"])
-        yv <- as.numeric(x["yvar"])
-        cv <- as.numeric(x["covar"])
-        eig <- eigen(cbind(c(xv, cv), c(cv, yv)), symmetric = TRUE)
-        return(angle(t(as.matrix(eig$vectors[, 1])), as.matrix(c(1, 0))))
-      }
-      df$pc_rotation <- apply(df, 1, get_pc_rotation)
-      df$pc_wrapped <- 2 * df$pc_rotation
-
-      # sort columns
-      df <- df[, c("docname", "writer", "doc", "cluster", "slope", "xvar", "yvar", "covar", "pc_rotation", "pc_wrapped")]
+      
+      df <- make_clusters_df(cluster_assign, doc, writer_indices, doc_indices)
 
       saveRDS(df, file = outfile)
-      message(paste("     Saving cluster assignments for ", doc$docname, "\n"))
-
+      
       return(df)
     }
   } else { # run sequentially
@@ -157,12 +135,14 @@ get_clusters_batch <- function(template, input_dir, output_dir, writer_indices, 
 
       # check that doc$docname is not blank
       if (!("docname" %in% names(doc))) {
-        if (!dir.exists(file.path(output_dir, "problem_files"))) {
-          dir.create(file.path(output_dir, "problem_files"))
-        }
-        message(paste("docname is NULL for", proclist[i], "\n"))
-        # copy file to problem files folder
-        file.copy(proclist[i], file.path(output_dir, "problem_files", basename(proclist[i])))
+        move_problem_file(path = proclist[i], output_dir = output_dir)
+        message(paste("docname is NULL for", path, "\n"))
+        next
+      }
+      
+      # return warning if document doesn't contain any graphs (E.g. document is blank)
+      if (!length(doc$process$letterList)){
+        warning("The document does not contain any graphs.")
         next
       }
 
@@ -179,49 +159,16 @@ get_clusters_batch <- function(template, input_dir, output_dir, writer_indices, 
       doc$process$letterList <- AddLetterImages(doc$process$letterList, dim(doc$image))
       doc$process$letterList <- MakeLetterListLetterSpecific(doc$process$letterList, dim(doc$image)) ### THIS SCREWS UP PLOTLETTER AND OTHER PLOTTING!!!
 
-      imagesList <- list()
-      imagesList <- c(imagesList, lapply(doc$process$letterList, function(x) {
-        centeredImage(x)
-      }))
-      imagesList <- lapply(imagesList, function(x) {
-        x$nodesrc <- cbind(((x$nodes - 1) %/% dim(x$image)[1]) + 1, dim(x$image)[1] - ((x$nodes - 1) %% dim(x$image)[1]))
-        x$nodesrc <- x$nodesrc - matrix(rep(x$centroid, each = dim(x$nodesrc)[1]), ncol = 2)
-        x$pathEndsrc <- lapply(x$allPaths, function(z) {
-          cbind(((z[c(1, length(z))] - 1) %/% dim(x$image)[1]) + 1, dim(x$image)[1] - ((z[c(1, length(z))] - 1) %% dim(x$image)[1]))
-        })
-        x$pathEndsrc <- lapply(x$pathEndsrc, function(z) {
-          z - matrix(rep(x$centroid, each = 2), ncol = 2)
-        })
-        return(x)
-      })
+      # delete graphs that have more than 30 paths
+      doc <- delete_graphs(doc = doc, max_edges = 30)
+      
+      imagesList <- list_images(doc)
 
       # get cluster assignments
       message(paste("     Getting cluster assignments for", doc$docname))
       cluster_assign <- sapply(imagesList, makeassignment, templateCenterList = template$centers, outliercut = outliercut)
-      df <- data.frame(cluster = cluster_assign)
 
-      # add docname, writer, doc, slope, xvar, yvar, and covar
-      df$docname <- doc$docname
-      df$writer <- sapply(df$docname, function(x) substr(x, start = writer_indices[1], stop = writer_indices[2]))
-      df$doc <- sapply(df$docname, function(x) substr(x, start = doc_indices[1], stop = doc_indices[2]), USE.NAMES = FALSE)
-      df$slope <- sapply(doc$process$letterList, function(x) x$characterFeatures$slope)
-      df$xvar <- sapply(doc$process$letterList, function(x) x$characterFeatures$xvar)
-      df$yvar <- sapply(doc$process$letterList, function(x) x$characterFeatures$yvar)
-      df$covar <- sapply(doc$process$letterList, function(x) x$characterFeatures$covar)
-
-      # calculate pc rotation angle and wrapped pc rotation angle
-      get_pc_rotation <- function(x) {
-        xv <- as.numeric(x["xvar"])
-        yv <- as.numeric(x["yvar"])
-        cv <- as.numeric(x["covar"])
-        eig <- eigen(cbind(c(xv, cv), c(cv, yv)), symmetric = TRUE)
-        return(angle(t(as.matrix(eig$vectors[, 1])), as.matrix(c(1, 0))))
-      }
-      df$pc_rotation <- apply(df, 1, get_pc_rotation)
-      df$pc_wrapped <- 2 * df$pc_rotation
-
-      # sort columns
-      df <- df[, c("docname", "writer", "doc", "cluster", "slope", "xvar", "yvar", "covar", "pc_rotation", "pc_wrapped")]
+      df <- make_clusters_df(cluster_assign, doc, writer_indices, doc_indices)
 
       saveRDS(df, file = outfile)
       message(paste("     Saving cluster assignments for ", doc$docname, "\n"))
@@ -229,11 +176,22 @@ get_clusters_batch <- function(template, input_dir, output_dir, writer_indices, 
       out_proclist[[i]] <- df
     }
     # rename
-    proclist <- out_proclist
+    proclist <- do.call(rbind, out_proclist)
+  }
+  
+  # check for missing clusters. NOTE: The foreach loop could be restructured to
+  # allow a warning to be given if a document without graphs is encountered and
+  # this message could be removed.
+  outfiles <- list.files(output_dir, pattern = ".rds", full.names = TRUE)
+  outfiles <- outfiles[which(outfiles != "all_clusters.rds")]
+  if (length(outfiles) != nrow(proclist)){
+    warning('Unable to get cluster assignments for one or more documents.')
   }
 
   # save clusters
-  saveRDS(proclist, file.path(output_dir, "all_clusters.rds"))
+  if (save_master_file){
+    saveRDS(proclist, file.path(output_dir, "all_clusters.rds"))
+  }
 
   return(proclist)
 }
@@ -241,6 +199,54 @@ get_clusters_batch <- function(template, input_dir, output_dir, writer_indices, 
 
 # Internal Functions ------------------------------------------------------
 
+#' Create a Directory
+#'
+#' Create a directory if it doesn't already exist. The user can optionally
+#' display a message in the console.
+#'
+#' @param path Path to new directory
+#' @param msg Optional message to display in the console
+#' @param ... Optional arguments passed to 'dir.create'
+#'
+#' @return Nothing is returned
+#'
+#' @noRd
+create_dir <- function(path, msg = NULL, ...) {
+  if (!is.null(msg)){
+    message(msg)
+  }
+  
+  if (!dir.exists(path)) {
+    dir.create(path, ...)
+  } else {
+    message("Directory already exists.")
+  }
+}
+
+move_problem_file <- function(path, output_dir) {
+  create_dir(path = file.path(output_dir, "problem_files"))
+  file.rename(path, file.path(output_dir, "problem_files", basename(path)))
+  
+}
+
+list_images <- function(doc) {
+  imagesList <- list()
+  imagesList <- c(imagesList, lapply(doc$process$letterList, function(x) {
+    centeredImage(x)
+  }))
+  imagesList <- lapply(imagesList, function(x) {
+    x$nodesrc <- cbind(((x$nodes - 1) %/% dim(x$image)[1]) + 1, dim(x$image)[1] - ((x$nodes - 1) %% dim(x$image)[1]))
+    x$nodesrc <- x$nodesrc - matrix(rep(x$centroid, each = dim(x$nodesrc)[1]), ncol = 2)
+    x$pathEndsrc <- lapply(x$allPaths, function(z) {
+      cbind(((z[c(1, length(z))] - 1) %/% dim(x$image)[1]) + 1, dim(x$image)[1] - ((z[c(1, length(z))] - 1) %% dim(x$image)[1]))
+    })
+    x$pathEndsrc <- lapply(x$pathEndsrc, function(z) {
+      z - matrix(rep(x$centroid, each = 2), ncol = 2)
+    })
+    return(x)
+  })
+  return(imagesList)
+}
 
 makeassignment <- function(imageListElement, templateCenterList, outliercut) {
   dist <- min(unlist(lapply(templateCenterList, function(x) {
@@ -405,9 +411,67 @@ MakeLetterListLetterSpecific = function(letterList, dims)
   return(letterList)
 }
 
+make_clusters_df <- function(cluster_assign, doc, writer_indices, doc_indices) {
+  # calculate pc rotation angle and wrapped pc rotation angle
+  # NOTE: foreach can't find get_pc_rotation unless it is nested in make_clusters_df
+  get_pc_rotation <- function(x) {
+    xv <- as.numeric(x["xvar"])
+    yv <- as.numeric(x["yvar"])
+    cv <- as.numeric(x["covar"])
+    eig <- eigen(cbind(c(xv, cv), c(cv, yv)), symmetric = TRUE)
+    return(angle(t(as.matrix(eig$vectors[, 1])), as.matrix(c(1, 0))))
+  }
+  
+  df <- data.frame(cluster = cluster_assign)
+  
+  # add docname, writer, doc, slope, xvar, yvar, and covar
+  df$docname <- doc$docname
+  df$writer <- sapply(df$docname, function(x) substr(x, start = writer_indices[1], stop = writer_indices[2]))
+  df$doc <- sapply(df$docname, function(x) substr(x, start = doc_indices[1], stop = doc_indices[2]), USE.NAMES = FALSE)
+  df$slope <- sapply(doc$process$letterList, function(x) x$characterFeatures$slope)
+  df$xvar <- sapply(doc$process$letterList, function(x) x$characterFeatures$xvar)
+  df$yvar <- sapply(doc$process$letterList, function(x) x$characterFeatures$yvar)
+  df$covar <- sapply(doc$process$letterList, function(x) x$characterFeatures$covar)
+  df$pc_rotation <- apply(df, 1, get_pc_rotation)
+  df$pc_wrapped <- 2 * df$pc_rotation
+  
+  # sort columns
+  df <- df[, c("docname", "writer", "doc", "cluster", "slope", "xvar", "yvar", "covar", "pc_rotation", "pc_wrapped")]
+  return(df)
+}
+
+#' Delete Graphs
+#'
+#' Delete any graphs from a processed document that have more than the maximum
+#' number of edges. 
+#'
+#' NOTE: `delete_graphs` counts the number of paths (edges) per graph
+#' and uses that number to determine which, if any, graphs to delete.
+#' `delete_crazy_graphs` groups graphs by stata - 1 loop, 2 loops, 1 edge, 2
+#' edges, 3 edges, and so on. However, if a graphs with tons of paths (edges)
+#' also has 1 or 2 loops, the graph will have the strata "1 loop" or "2 loops" 
+#' and will NOT be deleted by `delete_crazy_graphs`.
+#'
+#' @param doc A document processed with `processDocument`
+#' @param max_edges Graphs with more than the maximum number of edges will be
+#'   deleted from `doc$process$letterList`
+#'
+#' @return A list
+#'
+#' @noRd
+delete_graphs <- function(doc, max_edges = 30){
+  lengths <- sapply(doc$process$letterList, function(x) length(x$allPaths))
+  doc$process$letterList <- doc$process$letterList[which(lengths <= 30)]
+  return(doc)
+}
+
 #' get_clusterassignment
 #'
-#' @param main_dir Directory containing a cluster template created with `make_clustering_template`
+#' An internal function for getting cluster assignments for model or questioned
+#' documents. This function runs 'get_clusters_batch'.
+#'
+#' @param main_dir Directory containing a cluster template created with
+#'   `make_clustering_template`
 #' @param input_type `model` or `questioned`
 #' @param writer_indices Vector of start and end indices for the writer id in
 #'   the document names
@@ -461,81 +525,11 @@ get_clusterassignment <- function(main_dir, input_type, writer_indices, doc_indi
 
   # list files in input dir
   proclist <- list.files(input_dir, pattern = '.rds', full.names = TRUE)
-
-  my_cluster <- parallel::makeCluster(num_cores)
-  doParallel::registerDoParallel(my_cluster)
-
-  proclist <- foreach::foreach(
-    i = 1:length(proclist),
-    .combine = "rbind",
-    .export = c("AddLetterImages", "MakeLetterListLetterSpecific", "centeredImage", "makeassignment", "angle")
-  ) %dopar% { # for each document i
-
-    # load doc
-    doc <- readRDS(proclist[i])
-
-    # load outfile if it already exists
-    outfile <- file.path(output_dir, paste0(doc$docname, ".rds"))
-    if (file.exists(outfile)) {
-      df <- readRDS(outfile)
-      return(df)
-    }
-
-    # extra processing
-    doc$process$letterList <- AddLetterImages(doc$process$letterList, dim(doc$image))
-    doc$process$letterList <- MakeLetterListLetterSpecific(doc$process$letterList, dim(doc$image)) ### THIS SCREWS UP PLOTLETTER AND OTHER PLOTTING!!!
-
-    imagesList <- list()
-    imagesList <- c(imagesList, lapply(doc$process$letterList, function(x) {
-      centeredImage(x)
-    }))
-    imagesList <- lapply(imagesList, function(x) {
-      x$nodesrc <- cbind(((x$nodes - 1) %/% dim(x$image)[1]) + 1, dim(x$image)[1] - ((x$nodes - 1) %% dim(x$image)[1]))
-      x$nodesrc <- x$nodesrc - matrix(rep(x$centroid, each = dim(x$nodesrc)[1]), ncol = 2)
-      x$pathEndsrc <- lapply(x$allPaths, function(z) {
-        cbind(((z[c(1, length(z))] - 1) %/% dim(x$image)[1]) + 1, dim(x$image)[1] - ((z[c(1, length(z))] - 1) %% dim(x$image)[1]))
-      })
-      x$pathEndsrc <- lapply(x$pathEndsrc, function(z) {
-        z - matrix(rep(x$centroid, each = 2), ncol = 2)
-      })
-      return(x)
-    })
-
-    # get cluster assignments
-    cluster_assign <- sapply(imagesList, makeassignment, templateCenterList = template$centers, outliercut = outliercut)
-    df <- data.frame(cluster = cluster_assign)
-
-    # add docname, writer, doc, slope, xvar, yvar, and covar
-    df$docname <- doc$docname
-    df$writer <- sapply(df$docname, function(x) substr(x, start = writer_indices[1], stop = writer_indices[2]))
-    df$doc <- sapply(df$docname, function(x) substr(x, start = doc_indices[1], stop = doc_indices[2]), USE.NAMES = FALSE)
-    df$slope <- sapply(doc$process$letterList, function(x) x$characterFeatures$slope)
-    df$xvar <- sapply(doc$process$letterList, function(x) x$characterFeatures$xvar)
-    df$yvar <- sapply(doc$process$letterList, function(x) x$characterFeatures$yvar)
-    df$covar <- sapply(doc$process$letterList, function(x) x$characterFeatures$covar)
-
-    # calculate pc rotation angle and wrapped pc rotation angle
-    get_pc_rotation <- function(x) {
-      xv <- as.numeric(x["xvar"])
-      yv <- as.numeric(x["yvar"])
-      cv <- as.numeric(x["covar"])
-      eig <- eigen(cbind(c(xv, cv), c(cv, yv)), symmetric = TRUE)
-      return(angle(t(as.matrix(eig$vectors[, 1])), as.matrix(c(1, 0))))
-    }
-    df$pc_rotation <- apply(df, 1, get_pc_rotation)
-    df$pc_wrapped <- 2 * df$pc_rotation
-
-    # sort columns
-    df <- df[, c("docname", "writer", "doc", "cluster", "slope", "xvar", "yvar", "covar", "pc_rotation", "pc_wrapped")]
-
-    saveRDS(df, file = file.path(output_dir, paste0(stringr::str_replace(doc$docname, ".png", ""), ".rds")))
-
-    return(df)
-  }
   
-  parallel::stopCluster(my_cluster)
+  # get cluster assignments  
+  proclist <- get_clusters_batch(template, input_dir, output_dir, writer_indices, doc_indices, num_cores, save_master_file = FALSE)
 
-  # save clusters
+  # save clusters in output dir
   if (input_type == "model") {
     saveRDS(proclist, file.path(main_dir, "data", "model_clusters.rds"))
   } else {
