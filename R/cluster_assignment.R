@@ -130,7 +130,7 @@ get_clusters_batch <- function(template, input_dir, output_dir, writer_indices, 
     out_proclist <- list()
     for (i in 1:length(proclist)) {
       # load doc
-      message(paste("     Loading graphs for", basename(proclist[i])))
+      message(paste("Loading graphs for", basename(proclist[i])))
       doc <- readRDS(proclist[i])
 
       # check that doc$docname is not blank
@@ -165,13 +165,13 @@ get_clusters_batch <- function(template, input_dir, output_dir, writer_indices, 
       imagesList <- list_images(doc)
 
       # get cluster assignments
-      message(paste("     Getting cluster assignments for", doc$docname))
+      message(paste("Getting cluster assignments for", doc$docname))
       cluster_assign <- sapply(imagesList, makeassignment, templateCenterList = template$centers, outliercut = outliercut)
 
       df <- make_clusters_df(cluster_assign, doc, writer_indices, doc_indices)
 
       saveRDS(df, file = outfile)
-      message(paste("     Saving cluster assignments for ", doc$docname, "\n"))
+      message(paste("Saving cluster assignments for ", doc$docname, "\n"))
 
       out_proclist[[i]] <- df
     }
@@ -183,8 +183,8 @@ get_clusters_batch <- function(template, input_dir, output_dir, writer_indices, 
   # allow a warning to be given if a document without graphs is encountered and
   # this message could be removed.
   outfiles <- list.files(output_dir, pattern = ".rds", full.names = TRUE)
-  outfiles <- outfiles[which(outfiles != "all_clusters.rds")]
-  if (length(outfiles) != nrow(proclist)){
+  outfiles <- outfiles[which(basename(outfiles) != "all_clusters.rds")]
+  if (length(outfiles) != length(unique(proclist$docname))){
     warning('Unable to get cluster assignments for one or more documents.')
   }
 
