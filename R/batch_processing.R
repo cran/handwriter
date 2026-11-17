@@ -72,6 +72,7 @@ process_batch_list <- function(images, output_dir, skip_docs_on_retry=TRUE) {
   # skip problem docs (optional)
   if (skip_docs_on_retry){
     images <- remove_prob_docs_from_list(problem_docs, images)
+    outfiles <- remove_prob_docs_from_list(problem_docs, outfiles)
     # exit if all images have been processed
     if (length(images) == 0) {
       message('All documents have been processed or flagged as problem documents.')
@@ -79,7 +80,14 @@ process_batch_list <- function(images, output_dir, skip_docs_on_retry=TRUE) {
     }
   }
   
-  # start printing to log
+  # start printing to log. Close the sink when the function exits, even if it
+  # exits early because of an error or an interrupt, so the console output
+  # isn't left diverted to the log file (#229). Only close sinks opened here,
+  # so any sinks the user opened stay in place.
+  num_sinks <- sink.number()
+  on.exit({
+    while (sink.number() > num_sinks) sink()
+  }, add = TRUE)
   if (file.exists(prob_log_file)){
     sink(prob_log_file, append=TRUE)
   } else {
@@ -103,8 +111,7 @@ process_batch_list <- function(images, output_dir, skip_docs_on_retry=TRUE) {
   }
   
   # stop sinking to problem log file
-  sink(file = NULL, type = "output")
-  sink(file = NULL, type = "message")
+  while (sink.number() > num_sinks) sink()
   
   # show list of problem docs from log NOTE: Initially, I added problem doc names
   # to a vector inside the error part of trycatch and returned the list of
@@ -153,43 +160,6 @@ process_batch_dir <- function(input_dir, output_dir = ".", skip_docs_on_retry=TR
 }
 
 
-#' Read and Process
-#' 
-#' @description
-#' `r lifecycle::badge("superseded")`
-#' 
-#' Development on `read_and_process()` is complete. We recommend using [`processDocument()`].
-#' `read_and_process(image_name, "document")` is equivalent to `processDocument(image_name)`.
-#'
-#' @param image_name The file path to an image
-#' @param transform_output The type of transformation to perform on the output
-#' @return A list of the processed image components
-#' 
-#' @examples
-#' # use handwriting example from handwriter package
-#' image_path <- system.file("extdata", "phrase_example.png", package = "handwriter")
-#' doc <- read_and_process(image_path, "document")
-#' 
-#' @export
-#' @md
-read_and_process <- function(image_name, transform_output) {
-  document <- list()
-  
-  document$image <- readPNGBinary(image_name)
-  document$thin <- thinImage(document$image)
-  processList <- processHandwriting(document$thin, dim(document$image))
-  
-  if (transform_output == "document") {
-    document$process <- processList
-    document$docname <- basename(image_name)
-    return(document)
-  }
-  
-  processList$docname <- basename(image_name)
-  return(processList)
-}
-
-
 # INTERNAL ----------------------------------------------------------------
 
 
@@ -231,9 +201,14 @@ get_prob_docs_from_log <- function(log_file){
   return(problem_docs)
 }
 
-remove_prob_docs_from_list <- function(problem_docs, images){
-  images <- images[!(basename(images) %in% problem_docs)]
-  return(images)
+remove_prob_docs_from_list <- function(problem_docs, vec){
+  # get doc filenames for graph files
+  docs <- stringr::str_replace(vec, "_proclist.rds", ".png")
+  
+  # drop problem docs
+  vec <- vec[!(basename(docs) %in% problem_docs)]
+  
+  return(vec)
 }
 
 show_problem_docs <- function(prob_log_file) {

@@ -510,13 +510,14 @@ plot_cluster_centers <- function(template, plot_graphs = FALSE, size=100) {
     list(
       if (plot_graphs) {ggplot2::geom_segment(data=graphs_by_cluster, aes(x=startx, y=starty, xend=endx, yend=endy), color = "grey30", alpha=0.05)},
       ggplot2::geom_segment(aes(x=startx, y=starty, xend=endx, yend=endy), color = "orange"),
-      xlim(-size, size),
-      ylim(-size, size),
-      theme_void(),
-      facet_wrap(~cluster)
+      ggplot2::coord_fixed(ratio = 1, xlim = c(-size, size), ylim = c(-size, size), expand = TRUE, clip = "on"),
+      ggplot2::facet_wrap(~cluster),
+      ggplot2::labs(x = "x", y = "y"),
+      ggplot2::theme_bw()
     )
   }
-  p <- centers_df %>% ggplot2::ggplot() + 
+  p <- centers_df %>% 
+    ggplot2::ggplot() + 
     plot_items(plot_graphs)
   
   return(p)
